@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Global base styles                                                  */
+/* ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased dark:bg-night-950 dark:text-white;
+    /* Respect notches / safe areas on mobile devices */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent accidental text selection while tapping score buttons */
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  /* Reusable rounded card surface. In dark ("club") mode this is a near-black
+     green-tinted panel with a subtle padel-green border, echoing the
+     Vamos Padel Club look. */
+  .card {
+    @apply rounded-3xl bg-white/90 shadow-card ring-1 ring-black/5 backdrop-blur
+      dark:bg-night-900/90 dark:shadow-card-dark dark:ring-brand-600/40;
+  }
+}

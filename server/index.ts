@@ -1,0 +1,119 @@
+/**
+ * Padel Score multiplayer backend.
+ *
+ * A single Node process that:
+ *   1. serves the built React app (the `dist/` folder) as static files, and
+ *   2. exposes a Socket.IO endpoint so several people can score the same
+ *      match/tournament together in real time.
+ *
+ * The server is the single authority: clients send {@link RoomAction}s and it
+ * broadcasts the resulting {@link RoomState} to everyone in the room. All game
+ * logic is reused from the shared pure engines in `src/lib`.
+ *
+ * Designed to run as one process (e.g. on an OTC Elastic Cloud Server):
+ * `npm run build` then `npm start`.
+ */
+
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+import { createServer } from 'node:http';
+import { Server } from 'socket.io';
+import {
+  applyAction,
+  createRoom,
+  getRoom,
+  roomCount,
+  startCleanup,
+} from './rooms';
+import { RoomEvents } from '../src/types/room';
+import type {
+  CreateRoomAck,
+  JoinRoomAck,
+  RoomAction,
+} from '../src/types/room';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DIST_DIR = path.resolve(__dirname, '../dist');
+const PORT = Number(process.env.PORT) || 3001;
+
+const app = express();
+const httpServer = createServer(app);
+
+// Allow any origin for the WebSocket handshake. In production the app is
+// served from the same origin; in dev the Vite server (a different port)
+// needs cross-origin access.
+const io = new Server(httpServer, {
+  cors: { origin: true, methods: ['GET', 'POST'] },
+});
+
+// --- Static frontend ------------------------------------------------------
+// Serve the built SPA. Unknown non-API routes fall back to index.html so the
+// client-side app can handle routing/deep links.
+app.use(express.static(DIST_DIR));
+
+/** Simple health/status endpoint (handy for load balancers on OTC). */
+app.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok', rooms: roomCount() });
+});
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
+});
+
+// --- Realtime rooms -------------------------------------------------------
+io.on('connection', (socket) => {
+  // The room this particular socket currently belongs to (one at a time).
+  let currentCode: string | null = null;
+
+  /** Joins the socket to a room's broadcast channel. */
+  const join = (code: string) => {
+    if (currentCode) socket.leave(currentCode);
+    currentCode = code;
+    socket.join(code);
+  };
+
+  // Create a fresh room and immediately join it.
+  socket.on(RoomEvents.create, (ack?: (res: CreateRoomAck) => void) => {
+    const room = createRoom();
+    join(room.code);
+    ack?.({ code: room.code, state: room.state });
+  });
+
+  // Join an existing room by code.
+  socket.on(
+    RoomEvents.join,
+    (code: unknown, ack?: (res: JoinRoomAck) => void) => {
+      if (typeof code !== 'string' || !code.trim()) {
+        ack?.({ ok: false, error: 'Invalid room code.' });
+        return;
+      }
+      const room = getRoom(code);
+      if (!room) {
+        ack?.({ ok: false, error: 'Room not found.' });
+        return;
+      }
+      join(room.code);
+      ack?.({ ok: true, state: room.state });
+    },
+  );
+
+  // Apply a game action and broadcast the new state to the whole room.
+  socket.on(RoomEvents.action, (action: RoomAction) => {
+    if (!currentCode) return;
+    const state = applyAction(currentCode, action);
+    if (state) io.to(currentCode).emit(RoomEvents.state, state);
+  });
+
+  socket.on(RoomEvents.leave, () => {
+    if (currentCode) socket.leave(currentCode);
+    currentCode = null;
+  });
+});
+
+startCleanup();
+
+httpServer.listen(PORT, () => {
+  // eslint-disable-next-line no-console
+  console.log(`Padel Score server listening on http://localhost:${PORT}`);
+});

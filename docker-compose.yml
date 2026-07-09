@@ -1,0 +1,14 @@
+services:
+  padel-score:
+    build: .
+    # Rebuild locally with: docker compose up -d --build
+    image: padel-score:latest
+    container_name: padel-score
+    restart: unless-stopped
+    # Expose the app on host port 80 (change the left side to use another port,
+    # e.g. "8080:3001", if something else already listens on 80).
+    ports:
+      - "80:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
