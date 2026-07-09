@@ -10,10 +10,12 @@ interface RoomBadgeProps {
 /**
  * A small fixed badge shown on every screen while playing in a shared room,
  * so late joiners can always see the room code and leave when they are done.
+ * Positioned at the top-centre (in the header band) so it never covers the
+ * scoreboard's action buttons.
  */
 export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
   return (
-    <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-brand-600 px-3 py-1.5 text-white shadow-lg shadow-brand-600/30">
+    <div className="fixed left-1/2 top-3 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-brand-600 px-3 py-1.5 text-white shadow-lg shadow-brand-600/30">
       <SignalIcon className="h-4 w-4 animate-pulse" />
       <span className="text-xs font-medium opacity-90">Room</span>
       <span className="font-mono text-sm font-bold tracking-widest">{code}</span>
