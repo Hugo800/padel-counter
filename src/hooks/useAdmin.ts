@@ -13,12 +13,15 @@ import type {
   AdminListAck,
   AdminMessageAck,
   AdminMessagePayload,
+  RoomDetailAck,
 } from '../types/room';
 import { RoomEvents } from '../types/room';
 
 export interface UseAdmin {
   /** Fetches summaries of all active rooms (requires a valid admin token). */
   listRooms: (token: string) => Promise<AdminListAck>;
+  /** Fetches one room's full detail: state + connected devices. */
+  getRoom: (code: string, token: string) => Promise<RoomDetailAck>;
   /** Sends a popup message to a room (requires a valid admin token). */
   sendMessage: (
     code: string,
@@ -38,6 +41,18 @@ export function useAdmin(): UseAdmin {
     [],
   );
 
+  const getRoom = useCallback(
+    (code: string, token: string) =>
+      new Promise<RoomDetailAck>((resolve) => {
+        getSocket().emit(
+          RoomEvents.adminRoom,
+          { code, token },
+          (res: RoomDetailAck) => resolve(res),
+        );
+      }),
+    [],
+  );
+
   const sendMessage = useCallback(
     (code: string, text: string, token: string) =>
       new Promise<AdminMessageAck>((resolve) => {
@@ -51,5 +66,5 @@ export function useAdmin(): UseAdmin {
     [],
   );
 
-  return { listRooms, sendMessage };
+  return { listRooms, getRoom, sendMessage };
 }

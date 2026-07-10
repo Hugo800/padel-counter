@@ -33,9 +33,12 @@ import type {
   AdminMessageAck,
   AdminMessagePayload,
   CreateRoomAck,
+  DeviceInfo,
   JoinRoomAck,
   RoomAction,
+  RoomDetailAck,
 } from '../src/types/room';
+import { geolocate, normaliseIp, parseUserAgent } from './geo';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, '../dist');
@@ -71,6 +74,18 @@ const io = new Server(httpServer, {
   cors: { origin: true, methods: ['GET', 'POST'] },
 });
 
+/** Connection-scoped metadata about one client socket (for the admin panel). */
+interface DeviceMeta {
+  ip: string;
+  userAgent: string | undefined;
+  /** Room the socket currently belongs to, or null when in no room. */
+  code: string | null;
+  connectedAt: number;
+}
+
+/** Live metadata for every connected socket, keyed by socket id. */
+const devices = new Map<string, DeviceMeta>();
+
 // --- Static frontend ------------------------------------------------------
 // Serve the built SPA. Unknown non-API routes fall back to index.html so the
 // client-side app can handle routing/deep links.
@@ -90,11 +105,28 @@ io.on('connection', (socket) => {
   // The room this particular socket currently belongs to (one at a time).
   let currentCode: string | null = null;
 
+  // Capture the client's IP + User-Agent for the admin panel. Behind a reverse
+  // proxy or Docker port mapping the real client IP arrives via the
+  // `x-forwarded-for` header, so prefer it and fall back to the socket address.
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  const ip = normaliseIp(
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded) ||
+      socket.handshake.address,
+  );
+  devices.set(socket.id, {
+    ip,
+    userAgent: socket.handshake.headers['user-agent'],
+    code: null,
+    connectedAt: Date.now(),
+  });
+
   /** Joins the socket to a room's broadcast channel. */
   const join = (code: string) => {
     if (currentCode) socket.leave(currentCode);
     currentCode = code;
     socket.join(code);
+    const meta = devices.get(socket.id);
+    if (meta) meta.code = code;
   };
 
   // Create a fresh room and immediately join it.
@@ -132,6 +164,13 @@ io.on('connection', (socket) => {
   socket.on(RoomEvents.leave, () => {
     if (currentCode) socket.leave(currentCode);
     currentCode = null;
+    const meta = devices.get(socket.id);
+    if (meta) meta.code = null;
+  });
+
+  // Forget the device metadata once the socket goes away.
+  socket.on('disconnect', () => {
+    devices.delete(socket.id);
   });
 
   // --- Admin panel --------------------------------------------------------
@@ -154,6 +193,54 @@ io.on('connection', (socket) => {
         clients: io.sockets.adapter.rooms.get(room.code)?.size ?? 0,
       }));
       ack?.({ ok: true, rooms });
+    },
+  );
+
+  // Return the full detail for one room: its state plus every connected device
+  // (with a best-effort IP geolocation for the map).
+  socket.on(
+    RoomEvents.adminRoom,
+    async (
+      payload: { code?: unknown; token?: unknown },
+      ack?: (res: RoomDetailAck) => void,
+    ) => {
+      if (!isAdmin(payload?.token)) {
+        ack?.({ ok: false, error: 'Not authorised.' });
+        return;
+      }
+      const room =
+        typeof payload?.code === 'string' ? getRoom(payload.code) : undefined;
+      if (!room) {
+        ack?.({ ok: false, error: 'Room not found.' });
+        return;
+      }
+
+      // Collect the sockets currently in the room and resolve their devices.
+      const socketIds = [
+        ...(io.sockets.adapter.rooms.get(room.code) ?? []),
+      ];
+      const deviceList = await Promise.all(
+        socketIds.map(async (id): Promise<DeviceInfo | null> => {
+          const meta = devices.get(id);
+          if (!meta) return null;
+          const ua = parseUserAgent(meta.userAgent);
+          return {
+            id,
+            ip: meta.ip || 'unknown',
+            device: ua.device,
+            os: ua.os,
+            browser: ua.browser,
+            location: await geolocate(meta.ip),
+            connectedAt: meta.connectedAt,
+          };
+        }),
+      );
+
+      ack?.({
+        ok: true,
+        state: room.state,
+        devices: deviceList.filter((d): d is DeviceInfo => d !== null),
+      });
     },
   );
 

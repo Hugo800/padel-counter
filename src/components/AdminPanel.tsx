@@ -1,5 +1,6 @@
 import {
   ArrowPathIcon,
+  ChevronRightIcon,
   LockClosedIcon,
   PaperAirplaneIcon,
   SignalIcon,
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import type { Theme } from '../hooks/useTheme';
 import type { RoomSummary } from '../types/room';
+import { AdminRoomDetail } from './AdminRoomDetail';
 import { Button } from './ui/Button';
 import { TopBar } from './ui/TopBar';
 
@@ -38,6 +40,8 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Which room's detail view is open, or null while showing the list.
+  const [selected, setSelected] = useState<string | null>(null);
 
   /** Fetches the current room list; surfaces auth errors and locks on failure. */
   const refresh = useCallback(
@@ -65,14 +69,15 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
     if (ok) setUnlocked(true);
   }, [token, refresh]);
 
-  // Auto-refresh the room list on an interval while unlocked.
+  // Auto-refresh the room list on an interval while unlocked (paused while a
+  // single room's detail view is open, which does its own refreshing).
   useEffect(() => {
-    if (!unlocked) return;
+    if (!unlocked || selected) return;
     const id = setInterval(() => {
       void refresh(token.trim());
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [unlocked, token, refresh]);
+  }, [unlocked, selected, token, refresh]);
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-4 py-6">
@@ -102,6 +107,13 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
             {loading ? 'Checking…' : 'Unlock'}
           </Button>
         </div>
+      ) : selected ? (
+        // --- Single room detail --------------------------------------------
+        <AdminRoomDetail
+          code={selected}
+          token={token.trim()}
+          onBack={() => setSelected(null)}
+        />
       ) : (
         // --- Room list ------------------------------------------------------
         <>
@@ -135,6 +147,7 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
                 <RoomRow
                   key={room.code}
                   room={room}
+                  onOpen={() => setSelected(room.code)}
                   onSend={(text) => sendMessage(room.code, text, token.trim())}
                 />
               ))}
@@ -148,11 +161,12 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
 
 interface RoomRowProps {
   room: RoomSummary;
+  onOpen: () => void;
   onSend: (text: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 /** One room card with its live summary and an inline "send message" form. */
-function RoomRow({ room, onSend }: RoomRowProps) {
+function RoomRow({ room, onOpen, onSend }: RoomRowProps) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -178,7 +192,12 @@ function RoomRow({ room, onSend }: RoomRowProps) {
 
   return (
     <div className="card flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Header doubles as the drill-down trigger into the room detail view. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="-m-1 flex flex-wrap items-center justify-between gap-2 rounded-xl p-1 text-left transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800/50"
+      >
         <div className="flex items-center gap-2">
           <span className="font-mono text-lg font-bold tracking-widest text-brand-600 dark:text-brand-400">
             {room.code}
@@ -190,8 +209,9 @@ function RoomRow({ room, onSend }: RoomRowProps) {
           {room.clients} {room.clients === 1 ? 'device' : 'devices'}
           <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
           {formatRelative(room.updatedAt)}
+          <ChevronRightIcon className="h-4 w-4 text-slate-400" />
         </div>
-      </div>
+      </button>
 
       {/* Live context: match teams/score or tournament size. */}
       <p className="text-sm text-slate-600 dark:text-slate-300">

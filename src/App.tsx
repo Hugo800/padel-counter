@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { HomeScreen } from './components/HomeScreen';
 import { AdminPanel } from './components/AdminPanel';
 import { MatchScreen } from './components/MatchScreen';
-import { MessagePopup } from './components/MessagePopup';
+import { MessageToast } from './components/MessageToast';
 import { RoomBadge } from './components/RoomBadge';
 import { SetupScreen } from './components/SetupScreen';
 import { TournamentScreen } from './components/TournamentScreen';
@@ -320,9 +320,9 @@ export default function App() {
           )}
         </>
       )}
-      {/* Admin broadcast popup, shown to everyone in a room. */}
+      {/* Admin broadcast notification, shown to everyone in a room. */}
       {room.message && (
-        <MessagePopup message={room.message} onDismiss={room.dismissMessage} />
+        <MessageToast message={room.message} onDismiss={room.dismissMessage} />
       )}
     </>
   );

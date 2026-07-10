@@ -94,12 +94,31 @@ device.
 ## 🛠️ Admin panel
 
 There is a hidden **operator console** for whoever runs the server. Open the app
-with the `#admin` hash (e.g. `https://your-host/#admin`) to reach it. It shows
-**all active sessions/rooms** in real time — room code, mode, connected devices,
-the live match teams & score (or tournament size) and when the room was last
-active — and lets you **send a popup message to any room**. The message appears
-instantly as a modal on every device in that room (handy for "Court 2 is free"
-or "Last round, please wrap up").
+with the `#admin` hash (e.g. `https://your-host/#admin`) to reach it.
+
+**Session overview** — a live list of **all active sessions/rooms**: room code,
+mode, connected devices, the live match teams & score (or tournament size) and
+when the room was last active.
+
+**Drill into a session** — tap any room to open its detail view, which shows:
+
+- **Devices** — every connected device with a best-effort label (parsed from the
+  User-Agent, e.g. "iPhone · Safari"), its IP address and an approximate
+  **IP-based location shown on a map** (OpenStreetMap/Leaflet). Devices that
+  share one public IP (typical on a court's WiFi) are grouped into one pin.
+- **Game settings & score** — team and player names, the chosen rules
+  (format, golden point, tiebreak) and the current live score / set history.
+- **Tournament** — the standings table and the full bracket/schedule with
+  results.
+
+**Send a message** — broadcast a note to everyone in a room. It appears as a
+non-blocking **toast** on every device that auto-dismisses after 10 seconds
+(handy for "Court 2 is free" or "Last round, please wrap up").
+
+> **Note on device data:** browsers cannot expose a real device *name* for
+> privacy reasons, so the label is derived from the User-Agent. IP geolocation
+> is coarse (city level) and unavailable for private/local addresses; behind a
+> reverse proxy the real client IP must be forwarded via `X-Forwarded-For`.
 
 Access is protected by a shared **admin token**:
 

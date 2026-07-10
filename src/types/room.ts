@@ -78,6 +78,8 @@ export const RoomEvents = {
   message: 'room:message',
   /** admin → server: list all active rooms (ack returns summaries). */
   adminList: 'admin:list',
+  /** admin → server: fetch full detail (state + devices) for one room. */
+  adminRoom: 'admin:room',
   /** admin → server: send a popup message to one room (ack: ok/error). */
   adminMessage: 'admin:message',
 } as const;
@@ -150,4 +152,52 @@ export interface RoomMessage {
   text: string;
   /** Epoch ms when the message was sent. */
   at: number;
+}
+
+/**
+ * Approximate geographic location derived from a device's IP address. All
+ * fields are best-effort: IP geolocation is coarse (city level at best) and is
+ * unavailable for private/local addresses.
+ */
+export interface GeoLocation {
+  lat: number;
+  lon: number;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+}
+
+/**
+ * One connected device inside a room, as shown in the admin detail view.
+ *
+ * "Device name" cannot be read from a browser for privacy reasons, so
+ * {@link device} is a best-effort label derived from the User-Agent (e.g.
+ * "iPhone · Safari"). The IP is only ever exposed to an authenticated admin.
+ */
+export interface DeviceInfo {
+  /** Opaque per-connection id (the socket id). */
+  id: string;
+  /** Client IP address (best-effort; may be a proxy/gateway address). */
+  ip: string;
+  /** Friendly device label parsed from the User-Agent. */
+  device: string;
+  /** Operating system parsed from the User-Agent, or null. */
+  os: string | null;
+  /** Browser parsed from the User-Agent, or null. */
+  browser: string | null;
+  /** Approximate IP-based location, or null when it could not be resolved. */
+  location: GeoLocation | null;
+  /** Epoch ms when this device connected. */
+  connectedAt: number;
+}
+
+/** Ack payload returned to the admin panel for a single room's full detail. */
+export interface RoomDetailAck {
+  ok: boolean;
+  /** Present only when `ok` is false. */
+  error?: string;
+  /** The full room state (match, tournament, mode). */
+  state?: RoomState;
+  /** The devices currently connected to the room. */
+  devices?: DeviceInfo[];
 }

@@ -10,10 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - **Admin panel** (hidden `#admin` route): an operator console that lists every
   active session/room in real time — code, mode, connected devices, live match
-  teams & score or tournament size, and last-active time — and can **broadcast a
-  popup message to any room**. Messages appear instantly as a modal on every
-  device in that room. Guarded by a shared `ADMIN_TOKEN`; when it is unset all
-  admin features are disabled so no unauthenticated admin surface is exposed.
+  teams & score or tournament size, and last-active time. Each session can be
+  **opened in detail** to show:
+  - **Connected devices** with a best-effort label (parsed from the
+    User-Agent), their IP address and an approximate **IP-based location on a
+    map** (Leaflet/OpenStreetMap); devices sharing one public IP are clustered.
+  - **Game settings & score**: team/player names, rules, live score and set
+    history.
+  - **Tournament** standings and the full bracket/schedule with results.
+- **Admin broadcast** of a message to everyone in a room. It now shows as a
+  non-blocking **toast that auto-dismisses after 10 seconds** (previously a
+  modal popup). Guarded by a shared `ADMIN_TOKEN`; when it is unset all admin
+  features are disabled so no unauthenticated admin surface is exposed.
 - **Apple Watch view**: a new toggle next to the theme button on the scoreboard
   switches to a compact, watch-optimised layout — a small centred watch frame
   with both teams stacked as large tap targets, a pulsing serve dot, the current
