@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { HomeScreen } from './components/HomeScreen';
+import { AdminPanel } from './components/AdminPanel';
 import { MatchScreen } from './components/MatchScreen';
+import { MessagePopup } from './components/MessagePopup';
 import { RoomBadge } from './components/RoomBadge';
 import { SetupScreen } from './components/SetupScreen';
 import { TournamentScreen } from './components/TournamentScreen';
@@ -46,6 +48,21 @@ export default function App() {
     'padel-score:watch-mode',
     false,
   );
+
+  // Hidden admin console, reached via the `#admin` URL hash. Kept out of the
+  // normal navigation so regular users never stumble into it.
+  const [isAdmin, setIsAdmin] = useState(
+    () => window.location.hash === '#admin',
+  );
+  useEffect(() => {
+    const onHashChange = () => setIsAdmin(window.location.hash === '#admin');
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+  const exitAdmin = useCallback(() => {
+    // Clearing the hash returns to the normal app (also updates `isAdmin`).
+    window.location.hash = '';
+  }, []);
 
   // Are we currently playing in a shared online room?
   const online = room.online && room.state !== null;
@@ -289,9 +306,23 @@ export default function App() {
 
   return (
     <>
-      {content}
-      {online && room.code && (
-        <RoomBadge code={room.code} onLeave={room.leaveRoom} />
+      {isAdmin ? (
+        <AdminPanel
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onExit={exitAdmin}
+        />
+      ) : (
+        <>
+          {content}
+          {online && room.code && (
+            <RoomBadge code={room.code} onLeave={room.leaveRoom} />
+          )}
+        </>
+      )}
+      {/* Admin broadcast popup, shown to everyone in a room. */}
+      {room.message && (
+        <MessagePopup message={room.message} onDismiss={room.dismissMessage} />
       )}
     </>
   );

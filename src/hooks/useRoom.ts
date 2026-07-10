@@ -20,6 +20,7 @@ import type {
   CreateRoomAck,
   JoinRoomAck,
   RoomAction,
+  RoomMessage,
   RoomState,
 } from '../types/room';
 import { RoomEvents } from '../types/room';
@@ -39,6 +40,10 @@ export interface UseRoom {
   error: string | null;
   /** The synced room state, or null before the first broadcast. */
   state: RoomState | null;
+  /** Latest admin popup message for this room, or null when none/dismissed. */
+  message: RoomMessage | null;
+  /** Dismisses the current admin popup message. */
+  dismissMessage: () => void;
   /** Creates a new room and joins it. */
   createRoom: () => void;
   /** Joins an existing room by code. */
@@ -82,16 +87,22 @@ export function useRoom(): UseRoom {
   const [code, setCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<RoomState | null>(null);
+  const [message, setMessage] = useState<RoomMessage | null>(null);
 
   // Subscribe to broadcast state updates for the whole lifetime of the page.
   useEffect(() => {
     const socket = getSocket();
     const onState = (next: RoomState) => setState(next);
+    const onMessage = (msg: RoomMessage) => setMessage(msg);
     socket.on(RoomEvents.state, onState);
+    socket.on(RoomEvents.message, onMessage);
     return () => {
       socket.off(RoomEvents.state, onState);
+      socket.off(RoomEvents.message, onMessage);
     };
   }, []);
+
+  const dismissMessage = useCallback(() => setMessage(null), []);
 
   const createRoom = useCallback(() => {
     setError(null);
@@ -128,6 +139,7 @@ export function useRoom(): UseRoom {
     setCode(null);
     setState(null);
     setError(null);
+    setMessage(null);
     setStatus('offline');
   }, []);
 
@@ -199,6 +211,8 @@ export function useRoom(): UseRoom {
     code,
     error,
     state,
+    message,
+    dismissMessage,
     createRoom,
     joinRoom,
     leaveRoom,

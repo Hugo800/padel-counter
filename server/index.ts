@@ -23,11 +23,15 @@ import {
   applyAction,
   createRoom,
   getRoom,
+  listRoomSummaries,
   roomCount,
   startCleanup,
 } from './rooms';
 import { RoomEvents } from '../src/types/room';
 import type {
+  AdminListAck,
+  AdminMessageAck,
+  AdminMessagePayload,
   CreateRoomAck,
   JoinRoomAck,
   RoomAction,
@@ -36,6 +40,26 @@ import type {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, '../dist');
 const PORT = Number(process.env.PORT) || 3001;
+
+/**
+ * Shared secret that guards the admin panel. When unset, all admin features
+ * are disabled so the app never exposes an unauthenticated admin surface.
+ */
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN?.trim() || null;
+/** Maximum length of an admin broadcast message (defensive input bound). */
+const MAX_MESSAGE_LENGTH = 280;
+
+/**
+ * Validates an admin token in constant-ish time. Returns false whenever admin
+ * mode is disabled (no `ADMIN_TOKEN` configured) or the token does not match.
+ */
+function isAdmin(token: unknown): boolean {
+  return (
+    ADMIN_TOKEN !== null &&
+    typeof token === 'string' &&
+    token === ADMIN_TOKEN
+  );
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -109,6 +133,61 @@ io.on('connection', (socket) => {
     if (currentCode) socket.leave(currentCode);
     currentCode = null;
   });
+
+  // --- Admin panel --------------------------------------------------------
+  // List every active room. Requires a valid admin token; the connected-client
+  // count per room is read from the Socket.IO adapter.
+  socket.on(
+    RoomEvents.adminList,
+    (token: unknown, ack?: (res: AdminListAck) => void) => {
+      if (!isAdmin(token)) {
+        ack?.({
+          ok: false,
+          error: ADMIN_TOKEN
+            ? 'Invalid admin token.'
+            : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
+        });
+        return;
+      }
+      const rooms = listRoomSummaries().map((room) => ({
+        ...room,
+        clients: io.sockets.adapter.rooms.get(room.code)?.size ?? 0,
+      }));
+      ack?.({ ok: true, rooms });
+    },
+  );
+
+  // Broadcast a popup message to everyone in a specific room.
+  socket.on(
+    RoomEvents.adminMessage,
+    (
+      payload: AdminMessagePayload,
+      ack?: (res: AdminMessageAck) => void,
+    ) => {
+      if (!isAdmin(payload?.token)) {
+        ack?.({ ok: false, error: 'Not authorised.' });
+        return;
+      }
+      const text =
+        typeof payload?.text === 'string' ? payload.text.trim() : '';
+      if (!text) {
+        ack?.({ ok: false, error: 'Message must not be empty.' });
+        return;
+      }
+      if (text.length > MAX_MESSAGE_LENGTH) {
+        ack?.({ ok: false, error: 'Message is too long.' });
+        return;
+      }
+      const room =
+        typeof payload?.code === 'string' ? getRoom(payload.code) : undefined;
+      if (!room) {
+        ack?.({ ok: false, error: 'Room not found.' });
+        return;
+      }
+      io.to(room.code).emit(RoomEvents.message, { text, at: Date.now() });
+      ack?.({ ok: true });
+    },
+  );
 });
 
 startCleanup();

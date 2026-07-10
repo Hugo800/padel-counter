@@ -8,7 +8,7 @@
  */
 
 import { initialRoomState, roomReducer } from '../src/lib/roomReducer';
-import type { RoomAction, RoomState } from '../src/types/room';
+import type { RoomAction, RoomState, RoomSummary } from '../src/types/room';
 
 /** A single active room. */
 interface Room {
@@ -93,3 +93,34 @@ export function startCleanup(): NodeJS.Timeout {
 export function roomCount(): number {
   return rooms.size;
 }
+
+/**
+ * Builds a lightweight overview of every active room for the admin panel.
+ *
+ * The connected-client count is not known here (it lives in the Socket.IO
+ * adapter), so it is left at 0 and filled in by the server layer.
+ */
+export function listRoomSummaries(): RoomSummary[] {
+  return [...rooms.values()].map((room): RoomSummary => {
+    const match = room.state.match.present;
+    const tournament = room.state.tournament;
+    return {
+      code: room.code,
+      mode: room.state.mode,
+      updatedAt: room.updatedAt,
+      clients: 0,
+      matchTeams: match
+        ? [match.config.teams.A.name, match.config.teams.B.name]
+        : null,
+      matchScore: match ? `${match.sets.A}-${match.sets.B}` : null,
+      hasTournament: tournament !== null,
+      tournamentPlayers: tournament
+        ? tournament.teams.reduce(
+            (sum, team) => sum + team.players.filter(Boolean).length,
+            0,
+          )
+        : 0,
+    };
+  });
+}
+

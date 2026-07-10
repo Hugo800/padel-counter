@@ -1,0 +1,55 @@
+/**
+ * `useAdmin` — client-side controller for the hidden admin panel.
+ *
+ * Wraps the shared Socket.IO connection with two promise-based calls: listing
+ * every active room and broadcasting a popup message to one of them. The admin
+ * token is never persisted by this hook; the panel keeps it only in memory and
+ * passes it back on every call. The server is the sole authority that checks it.
+ */
+
+import { useCallback } from 'react';
+import { getSocket } from '../lib/socket';
+import type {
+  AdminListAck,
+  AdminMessageAck,
+  AdminMessagePayload,
+} from '../types/room';
+import { RoomEvents } from '../types/room';
+
+export interface UseAdmin {
+  /** Fetches summaries of all active rooms (requires a valid admin token). */
+  listRooms: (token: string) => Promise<AdminListAck>;
+  /** Sends a popup message to a room (requires a valid admin token). */
+  sendMessage: (
+    code: string,
+    text: string,
+    token: string,
+  ) => Promise<AdminMessageAck>;
+}
+
+export function useAdmin(): UseAdmin {
+  const listRooms = useCallback(
+    (token: string) =>
+      new Promise<AdminListAck>((resolve) => {
+        getSocket().emit(RoomEvents.adminList, token, (res: AdminListAck) => {
+          resolve(res);
+        });
+      }),
+    [],
+  );
+
+  const sendMessage = useCallback(
+    (code: string, text: string, token: string) =>
+      new Promise<AdminMessageAck>((resolve) => {
+        const payload: AdminMessagePayload = { code, text, token };
+        getSocket().emit(
+          RoomEvents.adminMessage,
+          payload,
+          (res: AdminMessageAck) => resolve(res),
+        );
+      }),
+    [],
+  );
+
+  return { listRooms, sendMessage };
+}

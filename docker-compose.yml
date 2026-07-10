@@ -12,3 +12,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # Admin panel (reachable at /#admin). Leave unset to fully disable admin
+      # features. Set a strong secret to enable listing rooms and sending
+      # popup messages, e.g. via a .env file or your shell:
+      #   ADMIN_TOKEN=change-me docker compose up -d
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-HalloTest}

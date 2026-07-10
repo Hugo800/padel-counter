@@ -91,6 +91,31 @@ This needs the small **backend server** (see *Running the server* below). When
 you're offline (no server), the app keeps working exactly as before on a single
 device.
 
+## 🛠️ Admin panel
+
+There is a hidden **operator console** for whoever runs the server. Open the app
+with the `#admin` hash (e.g. `https://your-host/#admin`) to reach it. It shows
+**all active sessions/rooms** in real time — room code, mode, connected devices,
+the live match teams & score (or tournament size) and when the room was last
+active — and lets you **send a popup message to any room**. The message appears
+instantly as a modal on every device in that room (handy for "Court 2 is free"
+or "Last round, please wrap up").
+
+Access is protected by a shared **admin token**:
+
+- Set the `ADMIN_TOKEN` environment variable on the server to enable the panel.
+- If `ADMIN_TOKEN` is **not set**, all admin features are disabled and the panel
+  refuses to list rooms — so the app never exposes an unauthenticated admin
+  surface.
+- The token is checked on the server for every admin action and is only kept in
+  memory in the browser (never persisted).
+
+With Docker Compose, pass it in via a `.env` file or your shell:
+
+```bash
+ADMIN_TOKEN=your-strong-secret docker compose up -d --build
+```
+
 ## ⌨️ Keyboard shortcuts
 
 | Shortcut          | Action          |
@@ -174,30 +199,6 @@ The app is then reachable on **port 80** of the server. Adjust the port mapping
 in `docker-compose.yml` (e.g. `"8080:3001"`) if needed, and open the matching
 port in the OTC **Security Group**. WebSockets run over the same HTTP port, so
 no extra configuration is required.
-
-### 🔄 Automatic deployment (GitHub Actions)
-
-Instead of pulling and rebuilding by hand, a **CI/CD pipeline** in
-`.github/workflows/deploy.yml` does it for you: on every push to `main` it runs
-lint, tests and a production build, then connects to the server over SSH and
-runs `git reset --hard origin/main && docker compose up -d --build`. It only
-deploys when the build is green, so broken code never reaches the server.
-
-Set these **repository secrets** (GitHub → *Settings → Secrets and variables →
-Actions*):
-
-| Secret        | Description                                                        |
-| ------------- | ------------------------------------------------------------------ |
-| `SSH_HOST`    | Public IP or hostname of the OTC server.                           |
-| `SSH_USER`    | SSH user (e.g. `ubuntu`).                                          |
-| `SSH_KEY`     | **Private** SSH key (PEM) of a key pair whose public key is in the server's `~/.ssh/authorized_keys`. |
-| `SSH_PORT`    | *(optional)* SSH port if not `22`.                                 |
-| `DEPLOY_PATH` | *(optional)* Path to the checked-out repo on the server, default `~/padel`. |
-
-One-time server prep: install Docker + the Compose plugin, `git clone` the repo
-to `DEPLOY_PATH`, and add the deploy key's public part to `authorized_keys`.
-After that, every push to `main` deploys automatically — you can also trigger it
-manually via **Actions → Deploy → Run workflow**.
 
 ## 🧪 Testing
 

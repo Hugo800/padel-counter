@@ -74,6 +74,12 @@ export const RoomEvents = {
   action: 'room:action',
   /** server → client: the full, updated {@link RoomState}. */
   state: 'room:state',
+  /** server → client(s) in a room: an admin broadcast to show as a popup. */
+  message: 'room:message',
+  /** admin → server: list all active rooms (ack returns summaries). */
+  adminList: 'admin:list',
+  /** admin → server: send a popup message to one room (ack: ok/error). */
+  adminMessage: 'admin:message',
 } as const;
 
 /** Ack payload returned when creating a room. */
@@ -89,4 +95,59 @@ export interface JoinRoomAck {
   error?: string;
   /** Present only when `ok` is true. */
   state?: RoomState;
+}
+
+/**
+ * A lightweight overview of one active room, shown in the admin panel. It
+ * deliberately avoids the full (potentially large) {@link RoomState} and only
+ * carries what the admin list needs to render.
+ */
+export interface RoomSummary {
+  code: string;
+  mode: AppMode;
+  /** Epoch ms of the last mutation (drives the "last active" column). */
+  updatedAt: number;
+  /** Number of clients currently connected to the room. */
+  clients: number;
+  /** Team names of the live match, or null when no match is running. */
+  matchTeams: [string, string] | null;
+  /** Set scoreline of the live match (e.g. "1-0"), or null. */
+  matchScore: string | null;
+  /** Whether a tournament is active in the room. */
+  hasTournament: boolean;
+  /** Number of tournament players, or 0 when there is no tournament. */
+  tournamentPlayers: number;
+}
+
+/** Ack payload returned to the admin panel when listing rooms. */
+export interface AdminListAck {
+  ok: boolean;
+  /** Present only when `ok` is false (e.g. bad/missing admin token). */
+  error?: string;
+  /** Present only when `ok` is true. */
+  rooms?: RoomSummary[];
+}
+
+/** Payload the admin sends to broadcast a popup message to a room. */
+export interface AdminMessagePayload {
+  /** Target room code. */
+  code: string;
+  /** Message body shown to everyone in the room. */
+  text: string;
+  /** Shared admin token, checked against the server's `ADMIN_TOKEN`. */
+  token: string;
+}
+
+/** Ack payload returned after an admin tries to send a message. */
+export interface AdminMessageAck {
+  ok: boolean;
+  /** Present only when `ok` is false. */
+  error?: string;
+}
+
+/** A popup message pushed from the admin to everyone in a room. */
+export interface RoomMessage {
+  text: string;
+  /** Epoch ms when the message was sent. */
+  at: number;
 }
