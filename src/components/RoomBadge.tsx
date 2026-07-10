@@ -15,8 +15,11 @@ interface RoomBadgeProps {
  * normal page flow (it is intentionally *not* a floating/fixed overlay), so it
  * no longer follows the page when scrolling. Callers embed it where it fits the
  * layout — e.g. at the bottom of the match setup and just under the timer on the
- * live scoreboard. It is a subtle neutral pill (not a coloured notification
- * banner) so it never distracts from play.
+ * live scoreboard.
+ *
+ * It is styled in the same padel-green as the tournament round pill and carries
+ * a pulsing "live" dot to signal that the room is connected and syncing in real
+ * time.
  *
  * Leaving is a deliberate two-step action: tapping the badge reveals a
  * "Leave room" button, so a stray tap can no longer kick the user out of the
@@ -42,17 +45,21 @@ export function RoomBadge({ code, onLeave, className = '' }: RoomBadgeProps) {
       ref={containerRef}
       className={`relative flex justify-center ${className}`}
     >
-      {/* Discreet, always-visible room-code chip. */}
+      {/* Discreet, always-visible room-code chip in padel green with a pulsing
+          live dot to signal the real-time connection. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Hide leave option' : 'Show leave option'}
-        className="flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-1 text-slate-500 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white/90 dark:bg-slate-900/70 dark:text-slate-400 dark:ring-white/10 dark:hover:bg-slate-900/90"
+        className="flex items-center gap-2 rounded-full bg-brand-600/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-brand-600 transition hover:bg-brand-600/25 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
       >
-        <span className="text-[11px] font-medium uppercase tracking-wide opacity-70">
-          Room
+        {/* Pulsing "live" indicator. */}
+        <span className="relative flex h-2 w-2" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
         </span>
-        <span className="font-mono text-xs font-bold tracking-widest text-slate-700 dark:text-slate-200">
+        <span className="opacity-70">Room</span>
+        <span className="font-mono font-bold normal-case tracking-widest text-brand-700 dark:text-brand-200">
           {code}
         </span>
       </button>

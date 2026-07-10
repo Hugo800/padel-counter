@@ -34,7 +34,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   flow** instead of a floating overlay, so it no longer moves along when you
   scroll. It appears where it fits naturally: at the bottom of the match/tournament
   setup and just under the match timer during play (and under the tournament
-  header). Leaving a room is still a deliberate two-step action (tap the badge →
+  header). It is styled in the same **padel green as the round pill** and carries
+  a **pulsing "live" dot** to show the room is connected and syncing in real time.
+  Leaving a room is still a deliberate two-step action (tap the badge →
   "Leave room"), so an accidental tap can no longer kick you out of the shared
   room.
 
