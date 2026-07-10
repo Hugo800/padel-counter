@@ -28,6 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   score, a compact sets/games summary and an undo button. The preference is
   persisted in `localStorage` (`padel-score:watch-mode`).
 
+### Changed
+
+- **Room-code badge** is now a discreet, fixed chip in the bottom-left corner
+  instead of a prominent notification-style banner. Leaving a room is now a
+  deliberate two-step action (tap the badge → "Leave room"), so an accidental
+  tap can no longer kick you out of the shared room.
+
 ## [1.6.0]
 
 ### Added
