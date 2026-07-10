@@ -10,6 +10,7 @@
 import { useCallback } from 'react';
 import { getSocket } from '../lib/socket';
 import type {
+  AdminDevicesAck,
   AdminListAck,
   AdminMessageAck,
   AdminMessagePayload,
@@ -22,6 +23,8 @@ export interface UseAdmin {
   listRooms: (token: string) => Promise<AdminListAck>;
   /** Fetches one room's full detail: state + connected devices. */
   getRoom: (code: string, token: string) => Promise<RoomDetailAck>;
+  /** Fetches the global device log: everyone who has connected to the site. */
+  listDevices: (token: string) => Promise<AdminDevicesAck>;
   /** Sends a popup message to a room (requires a valid admin token). */
   sendMessage: (
     code: string,
@@ -53,6 +56,18 @@ export function useAdmin(): UseAdmin {
     [],
   );
 
+  const listDevices = useCallback(
+    (token: string) =>
+      new Promise<AdminDevicesAck>((resolve) => {
+        getSocket().emit(
+          RoomEvents.adminDevices,
+          token,
+          (res: AdminDevicesAck) => resolve(res),
+        );
+      }),
+    [],
+  );
+
   const sendMessage = useCallback(
     (code: string, text: string, token: string) =>
       new Promise<AdminMessageAck>((resolve) => {
@@ -66,5 +81,5 @@ export function useAdmin(): UseAdmin {
     [],
   );
 
-  return { listRooms, getRoom, sendMessage };
+  return { listRooms, getRoom, listDevices, sendMessage };
 }

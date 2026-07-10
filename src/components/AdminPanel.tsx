@@ -1,7 +1,10 @@
 import {
   ArrowPathIcon,
   ChevronRightIcon,
+  ComputerDesktopIcon,
+  DevicePhoneMobileIcon,
   LockClosedIcon,
+  MapPinIcon,
   PaperAirplaneIcon,
   SignalIcon,
   TrophyIcon,
@@ -10,8 +13,9 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import type { Theme } from '../hooks/useTheme';
-import type { RoomSummary } from '../types/room';
+import type { DeviceInfo, RoomSummary } from '../types/room';
 import { AdminRoomDetail } from './AdminRoomDetail';
+import { DeviceMap } from './DeviceMap';
 import { Button } from './ui/Button';
 import { TopBar } from './ui/TopBar';
 
@@ -33,31 +37,37 @@ const REFRESH_INTERVAL_MS = 5000;
  * memory for the lifetime of the page.
  */
 export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
-  const { listRooms, sendMessage } = useAdmin();
+  const { listRooms, listDevices, sendMessage } = useAdmin();
 
   const [token, setToken] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  // Global device log: everyone who has connected to the site (incl. room-less).
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // Which room's detail view is open, or null while showing the list.
   const [selected, setSelected] = useState<string | null>(null);
 
-  /** Fetches the current room list; surfaces auth errors and locks on failure. */
+  /** Fetches the current room list + device log; locks on auth failure. */
   const refresh = useCallback(
     async (activeToken: string) => {
       setLoading(true);
-      const res = await listRooms(activeToken);
+      const [roomsRes, devicesRes] = await Promise.all([
+        listRooms(activeToken),
+        listDevices(activeToken),
+      ]);
       setLoading(false);
-      if (res.ok && res.rooms) {
-        setRooms(res.rooms);
+      if (roomsRes.ok && roomsRes.rooms) {
+        setRooms(roomsRes.rooms);
+        if (devicesRes.ok && devicesRes.devices) setDevices(devicesRes.devices);
         setError(null);
         return true;
       }
-      setError(res.error ?? 'Could not load rooms.');
+      setError(roomsRes.error ?? 'Could not load rooms.');
       return false;
     },
-    [listRooms],
+    [listRooms, listDevices],
   );
 
   const unlock = useCallback(async () => {
@@ -153,6 +163,9 @@ export function AdminPanel({ theme, onToggleTheme, onExit }: AdminPanelProps) {
               ))}
             </div>
           )}
+
+          {/* --- Global device log ---------------------------------------- */}
+          <DeviceLog devices={devices} />
         </>
       )}
     </div>
@@ -286,4 +299,84 @@ function formatRelative(ms: number): string {
   if (min < 60) return `${min}m ago`;
   const hrs = Math.round(min / 60);
   return `${hrs}h ago`;
+}
+
+/**
+ * The global device log: every device that has connected to the site — online
+ * now and recently disconnected — including those that never joined a room
+ * ("ohne Raumcode"). Shows each device's best-effort name, IP, approximate
+ * location and its current room (or none), plus a map of all located devices.
+ */
+function DeviceLog({ devices }: { devices: DeviceInfo[] }) {
+  const online = devices.filter((d) => d.online).length;
+  return (
+    <section className="mt-6 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-slate-400">
+          <ComputerDesktopIcon className="h-4 w-4" />
+          Device log ({devices.length})
+        </h2>
+        <span className="text-xs text-slate-400">
+          {online} online · {devices.length - online} offline
+        </span>
+      </div>
+
+      {devices.length === 0 ? (
+        <div className="card flex items-center justify-center p-8 text-sm text-slate-400">
+          No devices have connected yet.
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            {devices.map((d) => (
+              <div
+                key={d.id}
+                className="card flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  {/* Online indicator: pulsing green dot, grey when offline. */}
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${
+                      d.online ? 'animate-pulse bg-brand-500' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                    title={d.online ? 'Online' : 'Offline'}
+                  />
+                  <DevicePhoneMobileIcon className="h-4 w-4 text-slate-400" />
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
+                    {d.device}
+                  </span>
+                  <span className="font-mono text-xs text-slate-400">{d.ip}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  {/* Room code the device is in, or a "no room" marker. */}
+                  {d.code ? (
+                    <span className="rounded-full bg-brand-600/15 px-2 py-0.5 font-mono font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">
+                      {d.code}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-400 dark:bg-slate-800">
+                      No room
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <MapPinIcon className="h-4 w-4" />
+                    {d.location
+                      ? [d.location.city, d.location.country]
+                          .filter(Boolean)
+                          .join(', ') || 'Located'
+                      : 'Private / unknown'}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">·</span>
+                  {d.online ? 'now' : formatRelative(d.disconnectedAt ?? d.connectedAt)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* All located devices on one map. */}
+          <DeviceMap devices={devices} />
+        </>
+      )}
+    </section>
+  );
 }

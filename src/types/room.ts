@@ -80,6 +80,8 @@ export const RoomEvents = {
   adminList: 'admin:list',
   /** admin → server: fetch full detail (state + devices) for one room. */
   adminRoom: 'admin:room',
+  /** admin → server: list every device that has connected (the device log). */
+  adminDevices: 'admin:devices',
   /** admin → server: send a popup message to one room (ack: ok/error). */
   adminMessage: 'admin:message',
 } as const;
@@ -189,6 +191,15 @@ export interface DeviceInfo {
   location: GeoLocation | null;
   /** Epoch ms when this device connected. */
   connectedAt: number;
+  /**
+   * Room code this device is currently in, or null when it is on the site
+   * without having joined/created a shared room ("ohne Raumcode").
+   */
+  code?: string | null;
+  /** Whether the device's socket is still connected right now. */
+  online?: boolean;
+  /** Epoch ms when the device disconnected, or null while still online. */
+  disconnectedAt?: number | null;
 }
 
 /** Ack payload returned to the admin panel for a single room's full detail. */
@@ -199,5 +210,18 @@ export interface RoomDetailAck {
   /** The full room state (match, tournament, mode). */
   state?: RoomState;
   /** The devices currently connected to the room. */
+  devices?: DeviceInfo[];
+}
+
+/**
+ * Ack payload returned to the admin panel for the global device log: every
+ * device that has connected to the site (online and recently disconnected),
+ * including those that never joined a room.
+ */
+export interface AdminDevicesAck {
+  ok: boolean;
+  /** Present only when `ok` is false. */
+  error?: string;
+  /** Present only when `ok` is true. */
   devices?: DeviceInfo[];
 }

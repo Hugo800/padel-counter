@@ -29,6 +29,7 @@ import {
 } from './rooms';
 import { RoomEvents } from '../src/types/room';
 import type {
+  AdminDevicesAck,
   AdminListAck,
   AdminMessageAck,
   AdminMessagePayload,
@@ -81,10 +82,62 @@ interface DeviceMeta {
   /** Room the socket currently belongs to, or null when in no room. */
   code: string | null;
   connectedAt: number;
+  /** Epoch ms when the socket disconnected, or null while still connected. */
+  disconnectedAt: number | null;
 }
 
-/** Live metadata for every connected socket, keyed by socket id. */
+/**
+ * Device log: metadata for every socket that has connected, keyed by socket id.
+ * Unlike a purely live view, disconnected devices are retained for a while so
+ * the admin panel can show a history of everyone who has opened the site — not
+ * just those currently online or in a room.
+ */
 const devices = new Map<string, DeviceMeta>();
+
+/** How long a disconnected device stays in the log before being pruned (ms). */
+const DEVICE_LOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+/** Hard cap on log size; the oldest offline entries are dropped past this. */
+const DEVICE_LOG_MAX = 500;
+
+/**
+ * Removes stale offline devices: those disconnected longer than the TTL, and —
+ * if the log is still over capacity — the oldest offline entries. Online
+ * devices are always kept.
+ */
+function pruneDeviceLog(): void {
+  const now = Date.now();
+  for (const [id, meta] of devices) {
+    if (meta.disconnectedAt !== null && now - meta.disconnectedAt > DEVICE_LOG_TTL_MS) {
+      devices.delete(id);
+    }
+  }
+  if (devices.size <= DEVICE_LOG_MAX) return;
+  // Still too big: drop the oldest disconnected devices first.
+  const offline = [...devices.entries()]
+    .filter(([, m]) => m.disconnectedAt !== null)
+    .sort((a, b) => (a[1].disconnectedAt ?? 0) - (b[1].disconnectedAt ?? 0));
+  for (const [id] of offline) {
+    if (devices.size <= DEVICE_LOG_MAX) break;
+    devices.delete(id);
+  }
+}
+
+/** Builds the admin-facing {@link DeviceInfo} for one logged device. */
+async function toDeviceInfo(id: string, meta: DeviceMeta): Promise<DeviceInfo> {
+  const ua = parseUserAgent(meta.userAgent);
+  return {
+    id,
+    ip: meta.ip || 'unknown',
+    device: ua.device,
+    os: ua.os,
+    browser: ua.browser,
+    location: await geolocate(meta.ip),
+    connectedAt: meta.connectedAt,
+    code: meta.code,
+    online: meta.disconnectedAt === null,
+    disconnectedAt: meta.disconnectedAt,
+  };
+}
 
 // --- Static frontend ------------------------------------------------------
 // Serve the built SPA. Unknown non-API routes fall back to index.html so the
@@ -118,6 +171,7 @@ io.on('connection', (socket) => {
     userAgent: socket.handshake.headers['user-agent'],
     code: null,
     connectedAt: Date.now(),
+    disconnectedAt: null,
   });
 
   /** Joins the socket to a room's broadcast channel. */
@@ -168,9 +222,15 @@ io.on('connection', (socket) => {
     if (meta) meta.code = null;
   });
 
-  // Forget the device metadata once the socket goes away.
+  // Mark the device as offline but keep it in the log for a while so the admin
+  // panel can show a history of everyone who has opened the site.
   socket.on('disconnect', () => {
-    devices.delete(socket.id);
+    const meta = devices.get(socket.id);
+    if (meta) {
+      meta.disconnectedAt = Date.now();
+      meta.code = null;
+    }
+    pruneDeviceLog();
   });
 
   // --- Admin panel --------------------------------------------------------
@@ -223,16 +283,7 @@ io.on('connection', (socket) => {
         socketIds.map(async (id): Promise<DeviceInfo | null> => {
           const meta = devices.get(id);
           if (!meta) return null;
-          const ua = parseUserAgent(meta.userAgent);
-          return {
-            id,
-            ip: meta.ip || 'unknown',
-            device: ua.device,
-            os: ua.os,
-            browser: ua.browser,
-            location: await geolocate(meta.ip),
-            connectedAt: meta.connectedAt,
-          };
+          return toDeviceInfo(id, meta);
         }),
       );
 
@@ -241,6 +292,36 @@ io.on('connection', (socket) => {
         state: room.state,
         devices: deviceList.filter((d): d is DeviceInfo => d !== null),
       });
+    },
+  );
+
+  // Return the full device log: every device that has connected to the site
+  // (online and recently disconnected), including those never in a room. This
+  // powers the admin panel's global device log + map.
+  socket.on(
+    RoomEvents.adminDevices,
+    async (token: unknown, ack?: (res: AdminDevicesAck) => void) => {
+      if (!isAdmin(token)) {
+        ack?.({
+          ok: false,
+          error: ADMIN_TOKEN
+            ? 'Invalid admin token.'
+            : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
+        });
+        return;
+      }
+      pruneDeviceLog();
+      const list = await Promise.all(
+        [...devices.entries()].map(([id, meta]) => toDeviceInfo(id, meta)),
+      );
+      // Most recent activity first (online devices, then latest disconnects).
+      list.sort((a, b) => {
+        const at = a.online ? Date.now() : a.disconnectedAt ?? 0;
+        const bt = b.online ? Date.now() : b.disconnectedAt ?? 0;
+        if (at !== bt) return bt - at;
+        return b.connectedAt - a.connectedAt;
+      });
+      ack?.({ ok: true, devices: list });
     },
   );
 

@@ -18,6 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   - **Game settings & score**: team/player names, rules, live score and set
     history.
   - **Tournament** standings and the full bracket/schedule with results.
+- **Admin device log**: a global log of **every device that has opened the
+  site** — online now and recently disconnected — including those that never
+  joined a room (marked *"No room"*). Each entry shows the device's best-effort
+  name, IP, approximate IP-based location, its current room code (if any) and an
+  online/last-seen indicator, plus a **map of all located devices**. The server
+  retains disconnected devices for up to 24 hours (capped) so the overview also
+  covers **sessions without a room code**.
 - **Admin broadcast** of a message to everyone in a room. It now shows as a
   non-blocking **toast that auto-dismisses after 10 seconds** (previously a
   modal popup). Guarded by a shared `ADMIN_TOKEN`; when it is unset all admin

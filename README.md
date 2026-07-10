@@ -115,6 +115,12 @@ when the room was last active.
 non-blocking **toast** on every device that auto-dismisses after 10 seconds
 (handy for "Court 2 is free" or "Last round, please wrap up").
 
+**Device log** — below the session list, a global log of **every device that
+has opened the site** — online now *and* recently disconnected — including those
+that never joined a room (shown as *"No room"*). Each entry has the device's
+best-effort name, IP, approximate location, its current room code (if any) and
+an online/last-seen indicator, plus a **map** of all located devices.
+
 > **Note on device data:** browsers cannot expose a real device *name* for
 > privacy reasons, so the label is derived from the User-Agent. IP geolocation
 > is coarse (city level) and unavailable for private/local addresses; behind a
