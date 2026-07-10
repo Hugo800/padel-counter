@@ -10,6 +10,27 @@ import { formatDuration } from '../hooks/useTimer';
 import type { Theme } from '../hooks/useTheme';
 import { IconButton } from './ui/IconButton';
 
+/** Simple Apple-Watch glyph (rounded display + crown) for the watch toggle. */
+function WatchIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="6" y="6" width="12" height="12" rx="3.5" />
+      <path d="M8.5 6l.6-2.2A1.5 1.5 0 0 1 10.55 2.7h2.9a1.5 1.5 0 0 1 1.45 1.1L15.5 6" />
+      <path d="M8.5 18l.6 2.2a1.5 1.5 0 0 0 1.45 1.1h2.9a1.5 1.5 0 0 0 1.45-1.1l.6-2.2" />
+      <path d="M19 10.5v3" />
+    </svg>
+  );
+}
+
 interface ScoreboardHeaderProps {
   seconds: number;
   theme: Theme;
@@ -20,6 +41,10 @@ interface ScoreboardHeaderProps {
   keepAwake: boolean;
   onToggleKeepAwake: () => void;
   wakeLockSupported: boolean;
+  /** Whether the compact Apple-Watch layout is currently active. */
+  watchMode: boolean;
+  /** Toggles the compact Apple-Watch layout. */
+  onToggleWatch: () => void;
 }
 
 /**
@@ -36,6 +61,8 @@ export function ScoreboardHeader({
   keepAwake,
   onToggleKeepAwake,
   wakeLockSupported,
+  watchMode,
+  onToggleWatch,
 }: ScoreboardHeaderProps) {
   return (
     <header className="flex items-center justify-between gap-2">
@@ -74,6 +101,14 @@ export function ScoreboardHeader({
             )}
           </IconButton>
         )}
+
+        <IconButton
+          label={watchMode ? 'Exit watch view' : 'Apple Watch view'}
+          onClick={onToggleWatch}
+          className={watchMode ? 'text-brand-500 dark:text-brand-400' : ''}
+        >
+          <WatchIcon className="h-5 w-5" />
+        </IconButton>
 
         <IconButton
           label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}

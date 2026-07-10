@@ -34,6 +34,10 @@ tennis/padel rules.
 - **Winner screen** – celebrates the winning team and disables scoring.
 - **Nice-to-haves** – match duration timer, fullscreen mode, keep-screen-awake
   (Wake Lock API) and keyboard shortcuts.
+- **Apple Watch view** – a toggle next to the theme button on the scoreboard
+  switches to a compact, watch-optimised layout: a small centred watch frame
+  with the two teams stacked as large tap targets, serve dot, score and undo –
+  perfect for a wrist-sized screen. The choice is remembered across refreshes.
 - **Design** – Apple-inspired, minimalistic, rounded cards, soft shadows,
   smooth animations, light/dark mode and a fully responsive layout.
 
@@ -170,6 +174,30 @@ The app is then reachable on **port 80** of the server. Adjust the port mapping
 in `docker-compose.yml` (e.g. `"8080:3001"`) if needed, and open the matching
 port in the OTC **Security Group**. WebSockets run over the same HTTP port, so
 no extra configuration is required.
+
+### 🔄 Automatic deployment (GitHub Actions)
+
+Instead of pulling and rebuilding by hand, a **CI/CD pipeline** in
+`.github/workflows/deploy.yml` does it for you: on every push to `main` it runs
+lint, tests and a production build, then connects to the server over SSH and
+runs `git reset --hard origin/main && docker compose up -d --build`. It only
+deploys when the build is green, so broken code never reaches the server.
+
+Set these **repository secrets** (GitHub → *Settings → Secrets and variables →
+Actions*):
+
+| Secret        | Description                                                        |
+| ------------- | ------------------------------------------------------------------ |
+| `SSH_HOST`    | Public IP or hostname of the OTC server.                           |
+| `SSH_USER`    | SSH user (e.g. `ubuntu`).                                          |
+| `SSH_KEY`     | **Private** SSH key (PEM) of a key pair whose public key is in the server's `~/.ssh/authorized_keys`. |
+| `SSH_PORT`    | *(optional)* SSH port if not `22`.                                 |
+| `DEPLOY_PATH` | *(optional)* Path to the checked-out repo on the server, default `~/padel`. |
+
+One-time server prep: install Docker + the Compose plugin, `git clone` the repo
+to `DEPLOY_PATH`, and add the deploy key's public part to `authorized_keys`.
+After that, every push to `main` deploys automatically — you can also trigger it
+manually via **Actions → Deploy → Run workflow**.
 
 ## 🧪 Testing
 

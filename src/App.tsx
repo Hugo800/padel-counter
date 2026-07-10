@@ -41,6 +41,11 @@ export default function App() {
     'padel-score:mode',
     'home',
   );
+  // Compact Apple-Watch scoreboard layout, remembered across refreshes.
+  const [watchMode, setWatchMode] = useLocalStorage<boolean>(
+    'padel-score:watch-mode',
+    false,
+  );
 
   // Are we currently playing in a shared online room?
   const online = room.online && room.state !== null;
@@ -174,6 +179,8 @@ export default function App() {
     keepAwake,
     onToggleKeepAwake: () => setKeepAwake((v) => !v),
     wakeLockSupported,
+    watchMode,
+    onToggleWatch: () => setWatchMode((v) => !v),
   };
 
   // --- Routing ------------------------------------------------------------

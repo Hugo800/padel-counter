@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- **Apple Watch view**: a new toggle next to the theme button on the scoreboard
+  switches to a compact, watch-optimised layout — a small centred watch frame
+  with both teams stacked as large tap targets, a pulsing serve dot, the current
+  score, a compact sets/games summary and an undo button. The preference is
+  persisted in `localStorage` (`padel-score:watch-mode`).
+- **Automatic deployment pipeline** (`.github/workflows/deploy.yml`): every push
+  to `main` runs lint, tests and a production build, then deploys to the OTC
+  server over SSH (`git reset --hard origin/main && docker compose up -d
+  --build`). Deploys only run when the build is green and can also be triggered
+  manually. Requires the `SSH_HOST`, `SSH_USER` and `SSH_KEY` repository secrets
+  (optional `SSH_PORT`, `DEPLOY_PATH`).
+
 ## [1.6.0]
 
 ### Added

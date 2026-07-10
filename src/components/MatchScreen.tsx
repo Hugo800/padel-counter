@@ -10,6 +10,7 @@ import { Button } from './ui/Button';
 import { ScoreboardHeader } from './ScoreboardHeader';
 import { SetHistory } from './SetHistory';
 import { TeamPanel } from './TeamPanel';
+import { WatchScoreboard } from './WatchScoreboard';
 import { WinnerOverlay } from './WinnerOverlay';
 
 interface MatchScreenProps {
@@ -39,6 +40,10 @@ interface MatchScreenProps {
   keepAwake: boolean;
   onToggleKeepAwake: () => void;
   wakeLockSupported: boolean;
+  /** Whether the compact Apple-Watch layout is active. */
+  watchMode: boolean;
+  /** Toggles the compact Apple-Watch layout. */
+  onToggleWatch: () => void;
 }
 
 /**
@@ -64,6 +69,30 @@ export function MatchScreen(props: MatchScreenProps) {
   const finished = state.winner !== null;
   const status = getStatusMessage(state);
 
+  // Compact Apple-Watch layout: replaces the full scoreboard with a small,
+  // centred watch-style view. The winner overlay still renders on top so a
+  // finished match is celebrated in either layout.
+  if (props.watchMode) {
+    return (
+      <>
+        <WatchScoreboard
+          state={state}
+          canUndo={canUndo}
+          onPointA={onPointA}
+          onPointB={onPointB}
+          onUndo={onUndo}
+          seconds={props.seconds}
+          onExitWatch={props.onToggleWatch}
+        />
+        <WinnerOverlay
+          state={state}
+          onFinish={onFinish ?? onExit}
+          finishLabel={finishLabel}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 px-4 py-4">
       <ScoreboardHeader
@@ -76,6 +105,8 @@ export function MatchScreen(props: MatchScreenProps) {
         keepAwake={props.keepAwake}
         onToggleKeepAwake={props.onToggleKeepAwake}
         wakeLockSupported={props.wakeLockSupported}
+        watchMode={props.watchMode}
+        onToggleWatch={props.onToggleWatch}
       />
 
       {/* Contextual status banner */}

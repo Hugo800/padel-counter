@@ -1,0 +1,76 @@
+name: Deploy
+
+# Automatisches Deployment: bei jedem Push auf main wird zuerst getestet und
+# gebaut (Quality-Gate), danach per SSH auf dem OTC-Server neu deployt.
+on:
+  push:
+    branches: [main]
+  # Erlaubt zusätzlich ein manuelles Auslösen über den "Run workflow"-Button.
+  workflow_dispatch:
+
+# Verhindert, dass sich mehrere Deployments überholen: läuft schon eins,
+# wird das ältere abgebrochen, sobald ein neuer Push kommt.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  # --- Quality-Gate: Lint, Tests und Production-Build --------------------
+  # Läuft auf GitHub-Runnern und stellt sicher, dass nur funktionierender
+  # Code auf den Server ausgerollt wird.
+  ci:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # --- Deploy: per SSH auf den Server, Code ziehen und Container neu bauen -
+  deploy:
+    name: Deploy to OTC server
+    runs-on: ubuntu-latest
+    # Erst deployen, wenn das Quality-Gate grün ist.
+    needs: ci
+    # Kein Deploy bei manuellen Test-Läufen auf anderen Branches.
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          # Optional: eigener SSH-Port (Standard 22), falls als Secret gesetzt.
+          port: ${{ secrets.SSH_PORT || 22 }}
+          # Bricht ab, sobald ein Befehl fehlschlägt, statt weiterzumachen.
+          script_stop: true
+          script: |
+            set -e
+            # In das Projektverzeichnis wechseln (per Secret konfigurierbar,
+            # Fallback ~/padel).
+            cd "${{ secrets.DEPLOY_PATH || '~/padel' }}"
+            # Neuesten Stand von main holen, lokale Änderungen verwerfen, damit
+            # der Pull nie an Merge-Konflikten hängen bleibt.
+            git fetch --all
+            git reset --hard origin/main
+            # Image neu bauen und Container ersetzen; alte Images aufräumen.
+            docker compose up -d --build
+            docker image prune -f
