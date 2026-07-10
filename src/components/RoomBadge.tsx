@@ -9,10 +9,11 @@ interface RoomBadgeProps {
 }
 
 /**
- * A discreet, fixed badge shown in the bottom-left corner while playing in a
- * shared room, so everyone can always see the room code. It is intentionally
- * understated (not a notification-style banner) and never covers the
- * scoreboard's controls.
+ * A discreet, fixed badge showing the current shared-room code. It is pinned to
+ * the top-centre of the viewport — the one spot that stays clear on every
+ * screen, including the dense match scoreboard (whose corners hold the timer,
+ * display controls and action buttons). It is styled as a subtle neutral pill
+ * (not a coloured notification banner) so it never distracts from play.
  *
  * Leaving is a deliberate two-step action: tapping the badge reveals a
  * "Leave room" button, so a stray tap can no longer kick the user out of the
@@ -35,20 +36,8 @@ export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-3 left-3 z-40 flex flex-col items-start gap-1.5"
+      className="fixed left-1/2 top-2 z-40 flex -translate-x-1/2 flex-col items-center gap-1.5"
     >
-      {/* Deliberate leave action, only shown after tapping the badge. */}
-      {open && (
-        <button
-          type="button"
-          onClick={onLeave}
-          className="flex animate-fade-in items-center gap-1.5 rounded-full bg-rose-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 backdrop-blur transition hover:bg-rose-600"
-        >
-          <ArrowRightOnRectangleIcon className="h-4 w-4" />
-          Leave room
-        </button>
-      )}
-
       {/* Discreet, always-visible room-code chip. */}
       <button
         type="button"
@@ -63,6 +52,18 @@ export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
           {code}
         </span>
       </button>
+
+      {/* Deliberate leave action, only shown after tapping the badge. */}
+      {open && (
+        <button
+          type="button"
+          onClick={onLeave}
+          className="flex animate-fade-in items-center gap-1.5 rounded-full bg-rose-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 backdrop-blur transition hover:bg-rose-600"
+        >
+          <ArrowRightOnRectangleIcon className="h-4 w-4" />
+          Leave room
+        </button>
+      )}
     </div>
   );
 }
