@@ -5,6 +5,7 @@ import { settingsFromChoice, type FormatChoice } from '../lib/format';
 import type { Theme } from '../hooks/useTheme';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { RoomBadge } from './RoomBadge';
 import { Toggle } from './ui/Toggle';
 import { TopBar } from './ui/TopBar';
 
@@ -15,6 +16,10 @@ interface SetupScreenProps {
   onBack?: () => void;
   theme: Theme;
   onToggleTheme: () => void;
+  /** Active shared-room code, shown inline when playing online. */
+  roomCode?: string | null;
+  /** Leaves the current shared room. */
+  onLeaveRoom?: () => void;
 }
 
 /** Local form model for a single team. */
@@ -37,6 +42,8 @@ export function SetupScreen({
   onBack,
   theme,
   onToggleTheme,
+  roomCode,
+  onLeaveRoom,
 }: SetupScreenProps) {
   const [teamA, setTeamA] = useState<TeamForm>(DEFAULT_A);
   const [teamB, setTeamB] = useState<TeamForm>(DEFAULT_B);
@@ -184,6 +191,11 @@ export function SetupScreen({
         <PlayIcon className="h-6 w-6" />
         Start match
       </Button>
+
+      {/* Inline room code, pinned at the bottom of the settings (only online). */}
+      {roomCode && onLeaveRoom && (
+        <RoomBadge code={roomCode} onLeave={onLeaveRoom} className="pb-2" />
+      )}
     </div>
   );
 }

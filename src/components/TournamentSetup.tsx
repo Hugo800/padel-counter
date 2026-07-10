@@ -12,6 +12,7 @@ import type { Theme } from '../hooks/useTheme';
 import type { TournamentFormat, TournamentTeam } from '../types/tournament';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { RoomBadge } from './RoomBadge';
 import { Toggle } from './ui/Toggle';
 import { TopBar } from './ui/TopBar';
 
@@ -24,6 +25,10 @@ interface TournamentSetupProps {
   onBack: () => void;
   theme: Theme;
   onToggleTheme: () => void;
+  /** Active shared-room code, shown inline when playing online. */
+  roomCode?: string | null;
+  /** Leaves the current shared room. */
+  onLeaveRoom?: () => void;
 }
 
 const MIN_PLAYERS = 4;
@@ -52,6 +57,8 @@ export function TournamentSetup({
   onBack,
   theme,
   onToggleTheme,
+  roomCode,
+  onLeaveRoom,
 }: TournamentSetupProps) {
   // Player count is kept even so every player gets a partner.
   const [count, setCount] = useState(4);
@@ -340,6 +347,11 @@ export function TournamentSetup({
         <TrophyIcon className="h-6 w-6" />
         Start tournament
       </Button>
+
+      {/* Inline room code, pinned at the bottom of the settings (only online). */}
+      {roomCode && onLeaveRoom && (
+        <RoomBadge code={roomCode} onLeave={onLeaveRoom} className="pb-2" />
+      )}
     </div>
   );
 }

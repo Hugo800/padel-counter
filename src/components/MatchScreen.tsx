@@ -8,6 +8,7 @@ import type { MatchState } from '../types/match';
 import type { Theme } from '../hooks/useTheme';
 import { Button } from './ui/Button';
 import { ScoreboardHeader } from './ScoreboardHeader';
+import { RoomBadge } from './RoomBadge';
 import { SetHistory } from './SetHistory';
 import { TeamPanel } from './TeamPanel';
 import { WatchScoreboard } from './WatchScoreboard';
@@ -44,6 +45,10 @@ interface MatchScreenProps {
   watchMode: boolean;
   /** Toggles the compact Apple-Watch layout. */
   onToggleWatch: () => void;
+  /** Active shared-room code, shown inline under the timer when online. */
+  roomCode?: string | null;
+  /** Leaves the current shared room. */
+  onLeaveRoom?: () => void;
 }
 
 /**
@@ -108,6 +113,11 @@ export function MatchScreen(props: MatchScreenProps) {
         watchMode={props.watchMode}
         onToggleWatch={props.onToggleWatch}
       />
+
+      {/* Inline room code, sitting just under the timer (only online). */}
+      {props.roomCode && props.onLeaveRoom && (
+        <RoomBadge code={props.roomCode} onLeave={props.onLeaveRoom} />
+      )}
 
       {/* Contextual status banner */}
       {(matchLabel || status) && (

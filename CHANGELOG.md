@@ -30,12 +30,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- **Room-code badge** is now a discreet, fixed chip pinned to the top-centre of
-  the screen instead of a prominent notification-style banner. This is the one
-  spot that stays clear on every view — including the dense match scoreboard,
-  whose corners are occupied by the timer, display controls and action buttons —
-  so the room code is now always visible **during a match** without covering any
-  controls. Leaving a room is still a deliberate two-step action (tap the badge →
+- **Room-code badge** is now a discreet chip that sits **inline in the page
+  flow** instead of a floating overlay, so it no longer moves along when you
+  scroll. It appears where it fits naturally: at the bottom of the match/tournament
+  setup and just under the match timer during play (and under the tournament
+  header). Leaving a room is still a deliberate two-step action (tap the badge →
   "Leave room"), so an accidental tap can no longer kick you out of the shared
   room.
 

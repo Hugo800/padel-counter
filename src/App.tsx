@@ -3,7 +3,6 @@ import { HomeScreen } from './components/HomeScreen';
 import { AdminPanel } from './components/AdminPanel';
 import { MatchScreen } from './components/MatchScreen';
 import { MessageToast } from './components/MessageToast';
-import { RoomBadge } from './components/RoomBadge';
 import { SetupScreen } from './components/SetupScreen';
 import { TournamentScreen } from './components/TournamentScreen';
 import { TournamentSetup } from './components/TournamentSetup';
@@ -200,6 +199,14 @@ export default function App() {
     onToggleWatch: () => setWatchMode((v) => !v),
   };
 
+  // Shared-room code passed inline into each screen so it sits in the normal
+  // page flow (bottom of the setup, under the timer during a match) instead of
+  // floating over the page. `null` when playing offline, which hides the badge.
+  const roomProps = {
+    roomCode: online ? room.code : null,
+    onLeaveRoom: room.leaveRoom,
+  };
+
   // --- Routing ------------------------------------------------------------
 
   let content: JSX.Element;
@@ -217,6 +224,7 @@ export default function App() {
           onBack={goHome}
           theme={theme}
           onToggleTheme={toggleTheme}
+          {...roomProps}
         />
       );
     } else if (t.currentMatchId && activeMatch.state) {
@@ -239,6 +247,7 @@ export default function App() {
           finishLabel="Save result"
           matchLabel={label}
           {...headerControls}
+          {...roomProps}
         />
       );
     } else {
@@ -254,6 +263,7 @@ export default function App() {
           onHome={goHome}
           theme={theme}
           onToggleTheme={toggleTheme}
+          {...roomProps}
         />
       );
     }
@@ -265,6 +275,7 @@ export default function App() {
           onBack={goHome}
           theme={theme}
           onToggleTheme={toggleTheme}
+          {...roomProps}
         />
       );
     } else {
@@ -281,6 +292,7 @@ export default function App() {
           onFinish={endDoubles}
           finishLabel="New match"
           {...headerControls}
+          {...roomProps}
         />
       );
     }
@@ -315,9 +327,6 @@ export default function App() {
       ) : (
         <>
           {content}
-          {online && room.code && (
-            <RoomBadge code={room.code} onLeave={room.leaveRoom} />
-          )}
         </>
       )}
       {/* Admin broadcast notification, shown to everyone in a room. */}

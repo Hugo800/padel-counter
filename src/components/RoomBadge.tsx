@@ -6,20 +6,24 @@ interface RoomBadgeProps {
   code: string;
   /** Leaves the current shared room. */
   onLeave: () => void;
+  /** Extra classes for the wrapper, e.g. spacing where it is embedded. */
+  className?: string;
 }
 
 /**
- * A discreet, fixed badge showing the current shared-room code. It is pinned to
- * the top-centre of the viewport — the one spot that stays clear on every
- * screen, including the dense match scoreboard (whose corners hold the timer,
- * display controls and action buttons). It is styled as a subtle neutral pill
- * (not a coloured notification banner) so it never distracts from play.
+ * A discreet, inline badge showing the current shared-room code. It sits in the
+ * normal page flow (it is intentionally *not* a floating/fixed overlay), so it
+ * no longer follows the page when scrolling. Callers embed it where it fits the
+ * layout — e.g. at the bottom of the match setup and just under the timer on the
+ * live scoreboard. It is a subtle neutral pill (not a coloured notification
+ * banner) so it never distracts from play.
  *
  * Leaving is a deliberate two-step action: tapping the badge reveals a
  * "Leave room" button, so a stray tap can no longer kick the user out of the
- * room by accident.
+ * room by accident. The leave button is absolutely positioned below the chip so
+ * revealing it does not shift the surrounding layout.
  */
-export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
+export function RoomBadge({ code, onLeave, className = '' }: RoomBadgeProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +40,7 @@ export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed left-1/2 top-2 z-40 flex -translate-x-1/2 flex-col items-center gap-1.5"
+      className={`relative flex justify-center ${className}`}
     >
       {/* Discreet, always-visible room-code chip. */}
       <button
@@ -53,12 +57,13 @@ export function RoomBadge({ code, onLeave }: RoomBadgeProps) {
         </span>
       </button>
 
-      {/* Deliberate leave action, only shown after tapping the badge. */}
+      {/* Deliberate leave action, only shown after tapping the badge. It is
+          absolutely positioned so it overlays rather than pushes content. */}
       {open && (
         <button
           type="button"
           onClick={onLeave}
-          className="flex animate-fade-in items-center gap-1.5 rounded-full bg-rose-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 backdrop-blur transition hover:bg-rose-600"
+          className="absolute left-1/2 top-full z-20 mt-1.5 flex -translate-x-1/2 animate-fade-in items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-500/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/30 backdrop-blur transition hover:bg-rose-600"
         >
           <ArrowRightOnRectangleIcon className="h-4 w-4" />
           Leave room

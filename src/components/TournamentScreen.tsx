@@ -9,6 +9,7 @@ import type {
 } from '../types/tournament';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { RoomBadge } from './RoomBadge';
 import { TopBar } from './ui/TopBar';
 
 interface TournamentScreenProps {
@@ -21,6 +22,10 @@ interface TournamentScreenProps {
   onHome: () => void;
   theme: Theme;
   onToggleTheme: () => void;
+  /** Active shared-room code, shown inline when playing online. */
+  roomCode?: string | null;
+  /** Leaves the current shared room. */
+  onLeaveRoom?: () => void;
 }
 
 /**
@@ -38,6 +43,8 @@ export function TournamentScreen({
   onHome,
   theme,
   onToggleTheme,
+  roomCode,
+  onLeaveRoom,
 }: TournamentScreenProps) {
   const teamsById = useMemo(() => {
     const map = new Map<string, TournamentTeam>();
@@ -76,6 +83,11 @@ export function TournamentScreen({
           New
         </Button>
       </TopBar>
+
+      {/* Inline room code, just under the top bar (only online). */}
+      {roomCode && onLeaveRoom && (
+        <RoomBadge code={roomCode} onLeave={onLeaveRoom} />
+      )}
 
       {/* Champion banner */}
       {isComplete && winner && (
