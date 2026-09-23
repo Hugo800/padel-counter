@@ -1,0 +1,26 @@
+{
+  "name": "Tennis & Padel Score",
+  "short_name": "Score",
+  "description": "Keep score during a tennis or padel match - works without a signal.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a120e",
+  "theme_color": "#17593c",
+  "categories": ["sports", "utilities"],
+  "icons": [
+    {
+      "src": "/padel.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

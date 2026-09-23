@@ -33,6 +33,36 @@ export function useTimer(autoStart = false) {
   return { seconds, running, start, pause, reset };
 }
 
+/**
+ * Elapsed seconds of a match whose clock lives somewhere else - in a shared
+ * room, so every device in it shows the same duration instead of counting from
+ * the moment it happened to join.
+ *
+ * Ticks only while the match is running; once `endedAt` is set the value is a
+ * fixed difference and no interval is kept alive.
+ */
+export function useSharedDuration(
+  startedAt: number | null,
+  endedAt: number | null,
+): number {
+  const elapsed = () => {
+    if (startedAt === null) return 0;
+    return Math.max(0, Math.floor(((endedAt ?? Date.now()) - startedAt) / 1000));
+  };
+  const [seconds, setSeconds] = useState(elapsed);
+
+  useEffect(() => {
+    setSeconds(elapsed());
+    // A finished (or absent) match has a fixed duration - nothing to tick.
+    if (startedAt === null || endedAt !== null) return;
+    const id = window.setInterval(() => setSeconds(elapsed()), 1000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startedAt, endedAt]);
+
+  return seconds;
+}
+
 /** Formats a number of seconds as `H:MM:SS` or `M:SS`. */
 export function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);

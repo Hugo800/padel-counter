@@ -1,16 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
-/** Callbacks invoked by the global match keyboard shortcuts. */
+/**
+ * Callbacks invoked by the global match keyboard shortcuts.
+ *
+ * The two scoring handlers are named after the *screen* side, not the team:
+ * the panels can be mirrored with "Swap sides", and an arrow key must always
+ * award the point to the team the user sees in that direction.
+ */
 export interface ShortcutHandlers {
-  onPointA?: () => void;
-  onPointB?: () => void;
+  onPointLeft?: () => void;
+  onPointRight?: () => void;
   onUndo?: () => void;
 }
 
 /**
  * Registers global keyboard shortcuts for fast courtside scoring:
- * - `ArrowLeft`  → Team A scores
- * - `ArrowRight` → Team B scores
+ * - `ArrowLeft`  → the team shown on the left scores
+ * - `ArrowRight` → the team shown on the right scores
  * - `Ctrl/Cmd + Z` → Undo
  *
  * @param handlers Callbacks to run for each shortcut.
@@ -20,6 +26,12 @@ export function useKeyboardShortcuts(
   handlers: ShortcutHandlers,
   enabled = true,
 ) {
+  // Callers pass a fresh object literal every render, so read the handlers
+  // through a ref: the listener is then registered once instead of being torn
+  // down and re-attached on every single re-render.
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -37,18 +49,18 @@ export function useKeyboardShortcuts(
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault();
-        handlers.onUndo?.();
+        handlersRef.current.onUndo?.();
         return;
       }
 
       switch (event.key) {
         case 'ArrowLeft':
           event.preventDefault();
-          handlers.onPointA?.();
+          handlersRef.current.onPointLeft?.();
           break;
         case 'ArrowRight':
           event.preventDefault();
-          handlers.onPointB?.();
+          handlersRef.current.onPointRight?.();
           break;
         default:
           break;
@@ -57,5 +69,5 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlers, enabled]);
+  }, [enabled]);
 }

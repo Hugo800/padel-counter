@@ -6,8 +6,108 @@
 /* Global base styles                                                  */
 /* ------------------------------------------------------------------ */
 @layer base {
-  :root {
+  /* ---------------------------------------------------------------- */
+  /* Sport themes                                                      */
+  /* ---------------------------------------------------------------- */
+  /* Tailwind's `brand`, `night` and `slate` scales resolve through the
+     variables below (see tailwind.config.js), so swapping the class on
+     <html> re-skins the entire app. Values are bare "R G B" channel
+     triplets because Tailwind composes them as `rgb(var(--x) / alpha)`.
+
+     Default = padel: the deep green of an artificial-turf court. */
+  :root,
+  .sport-padel {
     color-scheme: light dark;
+
+    /* Padel green (#17593c is the primary club colour). */
+    --brand-50: 237 247 241;
+    --brand-100: 211 236 221;
+    --brand-200: 169 218 191;
+    --brand-300: 116 192 155;
+    --brand-400: 67 162 118;
+    --brand-500: 35 133 90;
+    --brand-600: 23 89 60;
+    --brand-700: 18 74 50;
+    --brand-800: 14 58 40;
+    --brand-900: 11 44 30;
+
+    /* Near-black, green-tinted surfaces. */
+    --night-700: 22 40 31;
+    --night-800: 15 28 22;
+    --night-900: 10 18 14;
+    --night-950: 5 8 7;
+
+    /* Green-tinted neutral scale. */
+    --slate-50: 244 248 246;
+    --slate-100: 233 241 236;
+    --slate-200: 212 226 218;
+    --slate-300: 179 201 189;
+    --slate-400: 138 168 153;
+    --slate-500: 100 125 112;
+    --slate-600: 72 89 79;
+    --slate-700: 47 61 53;
+    --slate-800: 26 39 31;
+    --slate-900: 16 26 20;
+    --slate-950: 7 13 10;
+
+    /* Team B's counter-colour: crimson against the green. White on
+       `--teamb-600` reaches 6.3:1, so the big point button stays legible. */
+    --teamb-300: 253 164 175;
+    --teamb-400: 251 113 133;
+    --teamb-500: 225 29 72;
+    --teamb-600: 190 18 60;
+    --teamb-700: 159 18 57;
+    --teamb-800: 136 19 55;
+
+    /* Court surface colours used by the .court-* backgrounds below. */
+    --court-base: 23 89 60;
+    --court-line: 255 255 255;
+  }
+
+  /* Tennis: the terracotta of a European clay court (Roland-Garros brick). */
+  .sport-tennis {
+    --brand-50: 253 243 239;
+    --brand-100: 250 226 216;
+    --brand-200: 244 195 176;
+    --brand-300: 233 157 128;
+    --brand-400: 219 117 81;
+    --brand-500: 200 90 52;
+    --brand-600: 168 68 36;
+    --brand-700: 138 56 30;
+    --brand-800: 109 44 24;
+    --brand-900: 84 34 19;
+
+    /* Near-black, warm brown surfaces. */
+    --night-700: 51 36 26;
+    --night-800: 36 24 17;
+    --night-900: 23 16 12;
+    --night-950: 13 7 5;
+
+    /* Sand-tinted neutral scale. */
+    --slate-50: 250 246 244;
+    --slate-100: 243 236 232;
+    --slate-200: 230 216 208;
+    --slate-300: 207 185 172;
+    --slate-400: 168 143 127;
+    --slate-500: 138 109 91;
+    --slate-600: 107 82 69;
+    --slate-700: 76 58 48;
+    --slate-800: 51 38 31;
+    --slate-900: 33 24 18;
+    --slate-950: 20 13 9;
+
+    /* Team B's counter-colour: a cool blue, because a second warm red beside
+       the terracotta would be nearly indistinguishable (it measured dE 36 -
+       this scale reaches 114). White on `--teamb-600` gives 6.7:1. */
+    --teamb-300: 147 197 253;
+    --teamb-400: 96 165 250;
+    --teamb-500: 37 99 235;
+    --teamb-600: 29 78 216;
+    --teamb-700: 30 64 175;
+    --teamb-800: 30 58 138;
+
+    --court-base: 168 68 36;
+    --court-line: 255 255 255;
   }
 
   html,
@@ -16,12 +116,34 @@
     height: 100%;
   }
 
+  /* Mobile browsers shrink/grow the visual viewport as the URL bar hides.
+     `dvh` follows that, so the scoreboard always fills the visible area. */
+  @supports (height: 100dvh) {
+    html {
+      height: 100dvh;
+    }
+  }
+
   body {
     @apply bg-slate-100 text-slate-900 antialiased dark:bg-night-950 dark:text-white;
-    /* Respect notches / safe areas on mobile devices */
+    /* Respect notches / safe areas on mobile devices. `border-box` keeps the
+       padding inside the 100% height so nothing overflows the viewport. */
+    box-sizing: border-box;
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
       env(safe-area-inset-bottom) env(safe-area-inset-left);
     -webkit-tap-highlight-color: transparent;
+    /* Stop iOS rubber-band scrolling / pull-to-refresh while scoring. */
+    overscroll-behavior: none;
+    /* Keep font sizes stable when a phone is rotated to landscape. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* The safe-area padding above shrinks the body, so the app shell scrolls
+     inside it rather than pushing the page. */
+  #root {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Prevent accidental text selection while tapping score buttons */
@@ -29,6 +151,13 @@
     -webkit-user-select: none;
     user-select: none;
     touch-action: manipulation;
+  }
+
+  /* iOS zooms in when a focused input is smaller than 16px – keep them at 16px. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 
@@ -39,5 +168,81 @@
   .card {
     @apply rounded-3xl bg-white/90 shadow-card ring-1 ring-black/5 backdrop-blur
       dark:bg-night-900/90 dark:shadow-card-dark dark:ring-brand-600/40;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Court surfaces (sport picker)                                       */
+  /* ------------------------------------------------------------------ */
+  /* Shared plumbing: a vignetted base colour plus a `--court-texture`
+     layer that each variant fills with its own material pattern. */
+  .court {
+    background-color: rgb(var(--court-base));
+    background-image:
+      var(--court-texture, none),
+      radial-gradient(
+        120% 90% at 50% 0%,
+        rgb(255 255 255 / 0.18) 0%,
+        rgb(0 0 0 / 0.35) 100%
+      );
+  }
+
+  /* Clay: fine terracotta grain (crushed brick) over a warm red base. */
+  .court-clay {
+    --court-base: 178 78 44;
+    --court-texture:
+      repeating-linear-gradient(
+        27deg,
+        rgb(0 0 0 / 0.07) 0px,
+        rgb(0 0 0 / 0.07) 1px,
+        transparent 1px,
+        transparent 4px
+      ),
+      repeating-linear-gradient(
+        -63deg,
+        rgb(255 255 255 / 0.05) 0px,
+        rgb(255 255 255 / 0.05) 1px,
+        transparent 1px,
+        transparent 5px
+      ),
+      radial-gradient(
+        circle at 25% 35%,
+        rgb(214 116 74 / 0.55) 0%,
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 78% 72%,
+        rgb(130 48 24 / 0.5) 0%,
+        transparent 50%
+      );
+  }
+
+  /* Artificial turf: vertical fibre striping in padel green. */
+  .court-turf {
+    --court-base: 26 105 68;
+    --court-texture:
+      repeating-linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0.1) 0px,
+        rgb(0 0 0 / 0.1) 2px,
+        rgb(255 255 255 / 0.05) 2px,
+        rgb(255 255 255 / 0.05) 4px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgb(0 0 0 / 0.06) 0px,
+        rgb(0 0 0 / 0.06) 3px,
+        transparent 3px,
+        transparent 9px
+      ),
+      radial-gradient(
+        circle at 30% 25%,
+        rgb(52 143 98 / 0.6) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 75% 80%,
+        rgb(12 62 40 / 0.55) 0%,
+        transparent 55%
+      );
   }
 }

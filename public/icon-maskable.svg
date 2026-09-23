@@ -1,0 +1,17 @@
+<!-- Maskable variant: the artwork stays inside the safe zone (the inner 80%),
+     so Android can crop it to a circle or squircle without clipping the ball. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1c6b48" />
+      <stop offset="1" stop-color="#0f4630" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" fill="url(#bg)" />
+  <circle cx="32" cy="32" r="13" fill="#c9f36b" />
+  <g stroke="#0f4630" stroke-width="2" fill="none" stroke-linecap="round">
+    <circle cx="32" cy="32" r="13" />
+    <path d="M21.5 24Q32 32 21.5 40" />
+    <path d="M42.5 24Q32 32 42.5 40" />
+  </g>
+</svg>

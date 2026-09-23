@@ -16,7 +16,7 @@
  * receiving the full {@link RoomState} the server produces.
  */
 
-import { awardPoint, createInitialState } from './scoring';
+import { awardPoint, canChooseFirstServer, createInitialState } from './scoring';
 import {
   buildMatchConfig,
   createTournament,
@@ -37,6 +37,8 @@ export function initialRoomState(): RoomState {
     mode: 'home',
     match: { ...EMPTY_MATCH },
     tournament: null,
+    matchStartedAt: null,
+    matchEndedAt: null,
   };
 }
 
@@ -56,6 +58,8 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
       return {
         ...state,
         match: { present: createInitialState(action.config), history: [] },
+        matchStartedAt: Date.now(),
+        matchEndedAt: null,
       };
 
     case 'match/point': {
@@ -71,6 +75,8 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           present: next,
           history: [...history, present].slice(-MAX_HISTORY),
         },
+        // Freeze the shared clock the moment the match is decided.
+        matchEndedAt: next.winner ? Date.now() : state.matchEndedAt,
       };
     }
 
@@ -79,7 +85,12 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
       if (history.length === 0) return state;
       const nextHistory = history.slice();
       const previous = nextHistory.pop()!;
-      return { ...state, match: { present: previous, history: nextHistory } };
+      return {
+        ...state,
+        match: { present: previous, history: nextHistory },
+        // Undoing the match point puts the clock back on.
+        matchEndedAt: previous.winner ? state.matchEndedAt : null,
+      };
     }
 
     case 'match/reset': {
@@ -92,23 +103,24 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           present: fresh,
           history: [...history, present].slice(-MAX_HISTORY),
         },
+        matchStartedAt: Date.now(),
+        matchEndedAt: null,
       };
     }
 
     case 'match/new':
-      return { ...state, match: { ...EMPTY_MATCH } };
+      return {
+        ...state,
+        match: { ...EMPTY_MATCH },
+        matchStartedAt: null,
+        matchEndedAt: null,
+      };
 
     case 'match/firstServer': {
       const { present } = state.match;
       if (!present) return state;
       // Only allowed before the very first point has been played.
-      const untouched =
-        present.points.A === 0 &&
-        present.points.B === 0 &&
-        present.games.A === 0 &&
-        present.games.B === 0 &&
-        present.completedSets.length === 0;
-      if (!untouched) return state;
+      if (!canChooseFirstServer(present)) return state;
       return {
         ...state,
         match: {
@@ -132,6 +144,8 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           action.format,
         ),
         match: { ...EMPTY_MATCH },
+        matchStartedAt: null,
+        matchEndedAt: null,
       };
 
     case 'tournament/playMatch': {
@@ -152,6 +166,8 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           ),
           history: [],
         },
+        matchStartedAt: Date.now(),
+        matchEndedAt: null,
       };
     }
 
@@ -168,21 +184,38 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           resultFromMatchState(present),
         ),
         match: { ...EMPTY_MATCH },
+        matchStartedAt: null,
+        matchEndedAt: null,
       };
     }
 
     case 'tournament/exitMatch': {
       const t = state.tournament;
-      if (!t) return { ...state, match: { ...EMPTY_MATCH } };
+      if (!t) {
+        return {
+          ...state,
+          match: { ...EMPTY_MATCH },
+          matchStartedAt: null,
+          matchEndedAt: null,
+        };
+      }
       return {
         ...state,
         tournament: { ...t, currentMatchId: null },
         match: { ...EMPTY_MATCH },
+        matchStartedAt: null,
+        matchEndedAt: null,
       };
     }
 
     case 'tournament/reset':
-      return { ...state, tournament: null, match: { ...EMPTY_MATCH } };
+      return {
+        ...state,
+        tournament: null,
+        match: { ...EMPTY_MATCH },
+        matchStartedAt: null,
+        matchEndedAt: null,
+      };
 
     default:
       return state;

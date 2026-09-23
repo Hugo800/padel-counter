@@ -1,9 +1,9 @@
-# 🎾 Padel Score
+# 🎾 Tennis & Padel Score
 
-A modern, responsive web app for keeping score during a padel match. Built to
-be used courtside: large touch targets, high-contrast typography, light & dark
-mode, keyboard shortcuts and a scoring engine that implements official
-tennis/padel rules.
+A modern, responsive web app for keeping score during a **tennis or padel**
+match. Built to be used courtside: large touch targets, high-contrast
+typography, light & dark mode, keyboard shortcuts and a scoring engine that
+implements official tennis/padel rules.
 
 ![Tech](https://img.shields.io/badge/React-18-61dafb) ![Tech](https://img.shields.io/badge/TypeScript-5-3178c6) ![Tech](https://img.shields.io/badge/Vite-5-646cff) ![Tech](https://img.shields.io/badge/Tailwind-3-38bdf8)
 
@@ -11,7 +11,16 @@ tennis/padel rules.
 
 ## ✨ Features
 
-- **Two play modes** – pick on the home screen:
+- **Pick your court** – the landing page is a split screen: choose **Tennis**
+  (terracotta **clay court** theme) or **Padel** (green **artificial turf**
+  theme). Each half is drawn with the sport's real court markings to scale
+  (ITF 23.77 × 10.97 m with singles lines and service boxes, FIP 20 × 10 m with
+  its enclosure), turned a quarter turn on phones so they stay legible. The
+  choice re-skins the whole app and is remembered; the back arrow on the home
+  screen returns to the picker.
+- **Play modes** – pick on the home screen:
+  - **Singles** *(tennis only)* – a 1 vs 1 match, including the short
+    **First to 3** format. Padel is played 2 vs 2, so the card is hidden there.
   - **Doubles** – a single match between two teams of two players.
   - **Tournament** – enter any even number of players (4–16), let the
     **random generator** draw the teams and auto-build a full round-robin
@@ -20,18 +29,27 @@ tennis/padel rules.
 - **Play together (online)** – create a shared room, hand the 4-letter code to
   your friends, and everyone scores the **same live match/tournament** from
   their own phone in real time.
-- **Match setup** – team & player names, best of 3 or 5 sets, Golden Point
-  (No-Ad) and Tiebreak toggles, and first-server selection.
+- **Match setup** – team & player names, the match format (quick points,
+  *First to 3* in singles, best of 3 or 5 sets), Golden Point (No-Ad) and
+  Tiebreak toggles, and first-server selection.
 - **Official scoring** – `0 → 15 → 30 → 40`, deuce/advantage, Golden Point,
   6-game sets with a two-game lead, 7-point tiebreaks at 6-6, and best-of
   match logic.
 - **Serve indicator** – automatically switches after every game and follows
   standard tennis serving rotation during a tiebreak.
+- **Swap sides** – a button in the scoring area mirrors the two panels when the
+  players change ends, so the on-screen left/right always matches the court.
+  It only changes the display (never the score) and is remembered per device.
 - **Undo history** – restores the complete previous state (points, games,
   sets, tiebreak, server and winner).
 - **Persistence** – the current match *and* the running tournament are saved
   to `localStorage` and survive a page refresh.
-- **Winner screen** – celebrates the winning team and disables scoring.
+- **Winner screen** – celebrates the winning team, disables scoring and offers a
+  one-tap **Rematch** (same teams, format and rules, score back at 0) next to
+  *Change setup* and *Finish* (back to the home screen).
+- **Pre-filled setup** – the setup screen remembers the last match of each mode
+  (names, format, rules, first server), so playing again with a small change is
+  a matter of seconds.
 - **Nice-to-haves** – match duration timer, fullscreen mode, keep-screen-awake
   (Wake Lock API) and keyboard shortcuts.
 - **Apple Watch view** – a toggle next to the theme button on the scoreboard
@@ -39,7 +57,15 @@ tennis/padel rules.
   with the two teams stacked as large tap targets, serve dot, score and undo –
   perfect for a wrist-sized screen. The choice is remembered across refreshes.
 - **Design** – Apple-inspired, minimalistic, rounded cards, soft shadows,
-  smooth animations, light/dark mode and a fully responsive layout.
+  smooth animations, light/dark mode and a fully responsive layout. Both sport
+  themes are driven by CSS custom properties (`--brand-*`, `--night-*`,
+  `--slate-*` in `src/index.css`) that feed Tailwind's colour scales, so the
+  `sport-tennis` / `sport-padel` class on `<html>` re-skins every screen.
+- **Phone-first** – the layout is tuned for one-handed courtside use: the whole
+  scoreboard fits on a phone screen without scrolling, the viewport follows
+  `100dvh` (no jumping when the browser's URL bar hides), notches/safe areas are
+  respected, pull-to-refresh is disabled while scoring and inputs never trigger
+  iOS auto-zoom.
 
 ## 🏆 Tournament mode
 
@@ -72,6 +98,18 @@ one game of `0/15/30/40`), so a match lasts at most 3 points. You can still
 switch to **Best of 3** or **Best of 5** sets on the setup screen. The same
 three formats are available for a single Doubles match.
 
+## 🎯 Singles mode
+
+Only two players? Choose **Singles** on the home screen. It uses the same
+engine and scoreboard as doubles, but each side is a **single player** (one name
+per side instead of a team plus two players).
+
+On top of the doubles formats, singles offers **First to 3** — a set-less match
+where the first player to win **3 points** takes it (a "point" is one
+`0/15/30/40` game), so it lasts at most 5 points. It is preselected for a
+singles match; *Quick* (first to 2), *Best of 3* and *Best of 5* remain
+available.
+
 ## 👥 Play together (online)
 
 Going to the courts with friends and don't want to be the only one holding a
@@ -80,8 +118,8 @@ phone? Use the **Play together** panel on the home screen:
 1. One person taps **Create a room** and gets a short **4-letter code**.
 2. Everyone else opens the same website and enters the code under **Join**.
 3. That's it — you're all in the same room. Whoever taps a score button awards
-   the point, and the scoreboard updates **live on every device**. Doubles
-   matches *and* full tournaments are shared.
+   the point, and the scoreboard updates **live on every device**. Singles and
+   doubles matches *and* full tournaments are shared.
 
 No accounts, no sign-up: anyone with the code can score. A small badge in the
 corner shows the active room code and a **Leave room** button. Rooms live in
@@ -250,8 +288,8 @@ padel/
 ├─ src/
 │  ├─ components/            # React components
 │  │  ├─ ui/                 # Reusable primitives (Button, Card, Toggle, TopBar, ...)
-│  │  ├─ HomeScreen.tsx      # Mode picker: Doubles vs Tournament
-│  │  ├─ SetupScreen.tsx     # Pre-match configuration (doubles)
+│  │  ├─ HomeScreen.tsx      # Mode picker: Singles / Doubles / Tournament
+│  │  ├─ SetupScreen.tsx     # Pre-match configuration (singles & doubles)
 │  │  ├─ TournamentSetup.tsx # Players, random team draw + rules
 │  │  ├─ TournamentScreen.tsx# Standings + round-robin schedule
 │  │  ├─ MatchScreen.tsx     # Live scoreboard layout
@@ -275,6 +313,7 @@ padel/
 │  │  ├─ scoring.ts          # ⚙️ Pure scoring engine (no UI)
 │  │  ├─ tournament.ts       # ⚙️ Pure tournament engine (draw/schedule/standings)
 │  │  ├─ roomReducer.ts      # ⚙️ Authoritative shared-room reducer (server + client)
+│  │  ├─ format.ts           # Match-format choice → engine settings
 │  │  └─ socket.ts           # Socket.IO client singleton
 │  ├─ types/
 │  │  ├─ match.ts            # Shared match types
@@ -283,6 +322,7 @@ padel/
 │  ├─ __tests__/
 │  │  ├─ scoring.test.ts     # Scoring engine unit tests
 │  │  ├─ tournament.test.ts  # Tournament engine unit tests
+│  │  ├─ format.test.ts      # Match-format helper unit tests
 │  │  └─ roomReducer.test.ts # Shared room reducer unit tests
 │  ├─ App.tsx                # Root: wires hooks + screen routing
 │  ├─ main.tsx               # Entry point

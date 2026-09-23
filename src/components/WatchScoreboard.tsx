@@ -1,7 +1,12 @@
-import { ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowsRightLeftIcon,
+  ArrowUturnLeftIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { formatDuration } from '../hooks/useTimer';
 import { getPointLabel, isDeuce, isPointsMode } from '../lib/scoring';
 import type { MatchState, TeamId } from '../types/match';
+import { TEAM_ACCENT, type TeamAccent } from '../lib/teamAccent';
 
 interface WatchScoreboardProps {
   state: MatchState;
@@ -13,6 +18,10 @@ interface WatchScoreboardProps {
   seconds: number;
   /** Leaves the watch layout and returns to the full scoreboard. */
   onExitWatch: () => void;
+  /** Mirrors the two team rows so they match the on-court sides. */
+  sidesSwapped?: boolean;
+  /** Toggles {@link sidesSwapped} (shown only when provided). */
+  onToggleSides?: () => void;
 }
 
 /**
@@ -31,10 +40,19 @@ export function WatchScoreboard({
   onUndo,
   seconds,
   onExitWatch,
+  sidesSwapped = false,
+  onToggleSides,
 }: WatchScoreboardProps) {
   const finished = state.winner !== null;
   const pointsMode = isPointsMode(state.config.settings);
   const status = state.tiebreak ? 'TIEBREAK' : isDeuce(state) ? 'DEUCE' : '';
+  // Top-to-bottom order of the team rows (mirrored when ends are changed).
+  const order: TeamId[] = sidesSwapped ? ['B', 'A'] : ['A', 'B'];
+  const pointHandlers: Record<TeamId, () => void> = {
+    A: onPointA,
+    B: onPointB,
+  };
+  const accents: Record<TeamId, TeamAccent> = { A: 'a', B: 'b' };
 
   return (
     <div className="flex min-h-full items-center justify-center px-4 py-6">
@@ -64,34 +82,43 @@ export function WatchScoreboard({
 
         {/* Two stacked team rows, each a large tap target. */}
         <div className="flex flex-col gap-2">
-          <WatchTeamRow
-            state={state}
-            team="A"
-            accent="brand"
-            pointsMode={pointsMode}
-            onPoint={onPointA}
-            disabled={finished}
-          />
-          <WatchTeamRow
-            state={state}
-            team="B"
-            accent="rose"
-            pointsMode={pointsMode}
-            onPoint={onPointB}
-            disabled={finished}
-          />
+          {order.map((team) => (
+            <WatchTeamRow
+              key={team}
+              state={state}
+              team={team}
+              accent={accents[team]}
+              pointsMode={pointsMode}
+              onPoint={pointHandlers[team]}
+              disabled={finished}
+            />
+          ))}
         </div>
 
-        {/* Undo — the only secondary control that fits a watch comfortably. */}
-        <button
-          type="button"
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl bg-white/5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ArrowUturnLeftIcon className="h-4 w-4" />
-          Undo
-        </button>
+        {/* Secondary controls that still fit a watch comfortably. */}
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-white/5 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ArrowUturnLeftIcon className="h-4 w-4" />
+            Undo
+          </button>
+          {onToggleSides && (
+            <button
+              type="button"
+              onClick={onToggleSides}
+              aria-label="Swap sides"
+              title="Swap sides"
+              aria-pressed={sidesSwapped}
+              className="inline-flex w-10 shrink-0 items-center justify-center rounded-2xl bg-white/5 py-2 text-slate-200 transition-colors hover:bg-white/10 active:scale-[0.98]"
+            >
+              <ArrowsRightLeftIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -100,7 +127,7 @@ export function WatchScoreboard({
 interface WatchTeamRowProps {
   state: MatchState;
   team: TeamId;
-  accent: 'brand' | 'rose';
+  accent: TeamAccent;
   pointsMode: boolean;
   onPoint: () => void;
   disabled: boolean;
@@ -119,18 +146,11 @@ function WatchTeamRow({
   const pointLabel = getPointLabel(state, team);
   const isServing = state.server === team;
 
-  const accentText =
-    accent === 'brand' ? 'text-brand-400' : 'text-rose-400';
-  const rowBg =
-    accent === 'brand'
-      ? 'bg-brand-600/15 active:bg-brand-600/25'
-      : 'bg-rose-500/15 active:bg-rose-500/25';
-  const dot = accent === 'brand' ? 'bg-brand-400' : 'bg-rose-400';
-  const serveRing = isServing
-    ? accent === 'brand'
-      ? 'ring-1 ring-brand-400/70'
-      : 'ring-1 ring-rose-400/70'
-    : 'ring-1 ring-white/5';
+  const c = TEAM_ACCENT[accent];
+  const accentText = c.watchText;
+  const rowBg = c.watchRow;
+  const dot = c.watchText.replace('text-', 'bg-');
+  const serveRing = isServing ? c.watchServeRing : 'ring-1 ring-white/5';
 
   // Compact "games / sets" (or the single points tally in points mode).
   const summary = pointsMode

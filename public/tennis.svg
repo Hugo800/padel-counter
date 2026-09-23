@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded tile in the clay-court brand gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c2542c" />
+      <stop offset="1" stop-color="#8a381e" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <!-- Tennis ball with its two curved seams -->
+  <circle cx="32" cy="32" r="17" fill="#e8f56b" />
+  <g stroke="#8a381e" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <circle cx="32" cy="32" r="17" />
+    <path d="M18.5 21.5Q32 32 18.5 42.5" />
+    <path d="M45.5 21.5Q32 32 45.5 42.5" />
+  </g>
+</svg>

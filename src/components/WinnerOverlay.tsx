@@ -1,4 +1,9 @@
-import { ArrowPathIcon, TrophyIcon } from '@heroicons/react/24/solid';
+import {
+  ArrowPathIcon,
+  HomeIcon,
+  PlusIcon,
+  TrophyIcon,
+} from '@heroicons/react/24/solid';
 import type { MatchState } from '../types/match';
 import { Button } from './ui/Button';
 
@@ -8,17 +13,33 @@ interface WinnerOverlayProps {
   onFinish: () => void;
   /** Label for the primary action (default "New match"). */
   finishLabel?: string;
+  /**
+   * Replays the match with the exact same teams, format and rules. When
+   * provided it becomes the *primary* action, because playing another round
+   * against the same opponents is by far the most common next step – and it
+   * saves re-typing the whole setup. Omitted where a replay makes no sense
+   * (e.g. a tournament fixture, where the result has to be recorded).
+   */
+  onRematch?: () => void;
+  /**
+   * Ends the session for good and returns to the home screen. Offered as a
+   * quiet third option for when the players are done for the day.
+   */
+  onHome?: () => void;
 }
 
 /**
  * A celebratory full-screen overlay shown when the match is decided.
- * Presents the winning team, the final set scores and a call to action to
- * start a fresh match.
+ * Presents the winning team, the final set scores and the ways to carry on:
+ * an instant rematch with the same setup, a new match with a changed setup,
+ * or stopping altogether.
  */
 export function WinnerOverlay({
   state,
   onFinish,
   finishLabel = 'New match',
+  onRematch,
+  onHome,
 }: WinnerOverlayProps) {
   if (!state.winner) return null;
 
@@ -62,15 +83,47 @@ export function WinnerOverlay({
           )}
         </div>
 
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={onFinish}
-          className="mt-8 w-full"
-        >
-          <ArrowPathIcon className="h-6 w-6" />
-          {finishLabel}
-        </Button>
+        <div className="mt-8 flex flex-col gap-2">
+          {onRematch && (
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={onRematch}
+              className="w-full"
+            >
+              <ArrowPathIcon className="h-6 w-6" />
+              Rematch
+            </Button>
+          )}
+          <Button
+            // Once a rematch is on offer it takes the spotlight, so starting
+            // over from scratch steps back to the secondary style.
+            variant={onRematch ? 'secondary' : 'primary'}
+            size="lg"
+            onClick={onFinish}
+            className="w-full"
+          >
+            {onRematch ? (
+              <PlusIcon className="h-6 w-6" />
+            ) : (
+              <ArrowPathIcon className="h-6 w-6" />
+            )}
+            {finishLabel}
+          </Button>
+
+          {onHome && (
+            <Button variant="ghost" onClick={onHome} className="w-full">
+              <HomeIcon className="h-5 w-5" />
+              Finish
+            </Button>
+          )}
+        </div>
+
+        {onRematch && (
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            Rematch keeps the same teams, format and rules.
+          </p>
+        )}
       </div>
     </div>
   );

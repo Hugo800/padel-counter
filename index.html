@@ -3,10 +3,41 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/padel.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <link rel="apple-touch-icon" href="/padel.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Pinch-zoom stays available: locking it fails WCAG 1.4.4, and the reason
+         people usually lock it (iOS zooming into sub-16px inputs) is already
+         handled by the 16px input rule in index.css. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Overwritten per sport at runtime by useSport; this is the padel default. -->
     <meta name="theme-color" content="#17593c" />
-    <meta name="description" content="Modern padel match scoreboard." />
-    <title>Padel Score</title>
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Modern tennis & padel match scoreboard." />
+    <title>Tennis &amp; Padel Score</title>
+    <!-- Apply the remembered sport theme before the first paint, otherwise a
+         returning tennis user briefly sees the green padel palette. Only the
+         two known class names can ever be applied. -->
+    <script>
+      (function () {
+        try {
+          var stored = JSON.parse(
+            localStorage.getItem('padel-score:sport') || 'null',
+          );
+          if (stored === 'tennis' || stored === 'padel') {
+            document.documentElement.classList.add('sport-' + stored);
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) {
+              meta.content = stored === 'tennis' ? '#a84424' : '#17593c';
+            }
+            var icon = document.querySelector('link[rel="icon"]');
+            if (icon) icon.href = '/' + stored + '.svg';
+          }
+        } catch (e) {
+          /* Corrupt or unavailable storage – the picker will show up. */
+        }
+      })();
+    </script>
     <!-- Open Sans, matching the Vamos Padel Club typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

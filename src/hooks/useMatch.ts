@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { awardPoint, createInitialState } from '../lib/scoring';
+import { awardPoint, canChooseFirstServer, createInitialState } from '../lib/scoring';
 import type { MatchConfig, MatchState, TeamId } from '../types/match';
 import { useLocalStorage } from './useLocalStorage';
 
@@ -98,13 +98,7 @@ export function useMatch(): UseMatch {
       setData((prev) => {
         if (!prev.present) return prev;
         const s = prev.present;
-        const untouched =
-          s.points.A === 0 &&
-          s.points.B === 0 &&
-          s.games.A === 0 &&
-          s.games.B === 0 &&
-          s.completedSets.length === 0;
-        if (!untouched) return prev;
+        if (!canChooseFirstServer(s)) return prev;
         return {
           ...prev,
           present: {

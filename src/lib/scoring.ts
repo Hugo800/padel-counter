@@ -292,6 +292,63 @@ function applyTiebreakPoint(state: MatchState, team: TeamId): MatchState {
 }
 
 /**
+ * True while the first server may still be corrected: nothing has been played
+ * yet. Shared by the UI, the local hook and the room reducer so the rule
+ * cannot drift between offline and online play.
+ */
+export function canChooseFirstServer(state: MatchState): boolean {
+  return (
+    !state.winner &&
+    state.points.A === 0 &&
+    state.points.B === 0 &&
+    state.games.A === 0 &&
+    state.games.B === 0 &&
+    state.completedSets.length === 0
+  );
+}
+
+/**
+ * True when the players are due to change ends *right now*.
+ *
+ * The rule is the same in tennis and padel: ends change after every odd game
+ * of a set (so after games 1, 3, 5, ...), which also covers the end of a set
+ * that finished on an odd total, and every six points inside a tiebreak.
+ *
+ * Only ever true between points, never mid-game, so the prompt cannot appear
+ * while a rally is being scored. The quick "points" formats have no ends.
+ */
+export function isChangeOfEndsDue(state: MatchState): boolean {
+  if (state.winner) return false;
+  if (isPointsMode(state.config.settings)) return false;
+
+  if (state.tiebreak) {
+    const played = state.tiebreak.A + state.tiebreak.B;
+    return played > 0 && played % 6 === 0;
+  }
+
+  // Between games only.
+  if (state.points.A !== 0 || state.points.B !== 0) return false;
+
+  const gamesInSet = state.games.A + state.games.B;
+  if (gamesInSet > 0) return gamesInSet % 2 === 1;
+
+  // Games are back to 0-0: either the match has not started (no ends to
+  // change) or a set just ended, in which case its total decides.
+  const last = state.completedSets[state.completedSets.length - 1];
+  return last ? (last.A + last.B) % 2 === 1 : false;
+}
+
+/**
+ * A stable key for the situation {@link isChangeOfEndsDue} is reporting, so
+ * the UI can remember that this particular change of ends was dealt with and
+ * stop prompting until the next one comes round.
+ */
+export function changeOfEndsKey(state: MatchState): string {
+  const tb = state.tiebreak ? `${state.tiebreak.A + state.tiebreak.B}` : '-';
+  return `${state.completedSets.length}:${state.games.A}-${state.games.B}:${tb}`;
+}
+
+/**
  * The single public entry point for scoring: awards one point to `team`
  * and returns the resulting match state. If the match is already over the
  * state is returned unchanged.

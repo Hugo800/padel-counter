@@ -8,6 +8,122 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **Installable and offline-capable (PWA)**: a web app manifest plus a
+  hand-written service worker (`public/sw.js`) make the scoreboard installable
+  on a phone's home screen and usable without a signal — the common case on a
+  court. Navigations are network-first with a cached shell as fallback, so a
+  deploy is picked up immediately; the content-hashed build assets are served
+  cache-first. The realtime paths (`/socket.io/`, `/healthz`) are never cached,
+  because a stale handshake would break shared rooms in ways that look like a
+  server outage. Registered only in production builds.
+- **Landscape layout for phones** (`short:` breakpoint, `max-height: 520px` and
+  landscape): a phone laid sideways on the bench now gives all of its height to
+  the score. Set history, player names and the shortcut hint step aside, the
+  header, cards and buttons tighten up.
+- **Change-of-ends prompt**: the app now knows when the rules call for a change
+  of ends — after every odd game of a set, and every six points of a tiebreak —
+  and turns the *Swap sides* control into a highlighted *Change ends* for that
+  moment. New pure `isChangeOfEndsDue()` in the scoring engine, fully tested;
+  it only ever fires between points, and stops asking once acted on.
+- **Serve correction**: the first server can be fixed from the scoreboard until
+  the first point is played. The logic already existed in the hook, the reducer
+  and as a `match/firstServer` room action, but was unreachable from the UI.
+  The shared rule now lives in `canChooseFirstServer()` instead of being
+  duplicated three times.
+- **Spoken score**: a visually-hidden live region announces the score, games,
+  sets and who is serving, so VoiceOver and TalkBack users hear changes instead
+  of facing a silent board.
+
+### Changed
+
+- **Team B has its own sport-aware colour** (`teamb`, driven by CSS variables
+  like the rest of the palette). Team B previously kept Tailwind's default rose
+  in both sports, which sat far too close to tennis' terracotta — the two teams
+  measured only dE 36 apart, against dE 101 on padel's green. Tennis now pairs
+  the clay with a cool blue (dE 114) and padel with a deeper crimson. As a side
+  effect the big *+ Point* button finally passes WCAG contrast: white on the
+  old rose was 3.67:1, the new colours give 6.3:1 (padel) and 6.7:1 (tennis).
+  `rose` stays reserved for genuinely destructive actions.
+- **The whole team column scores a point**, not just the bar at its foot —
+  roughly double the tap target on the device this app is actually used on. The
+  bar remains as the visual affordance.
+- **Games are the prominent number** after the point itself; sets ride along in
+  a smaller chip.
+- **Reset is now a two-step *Restart***: the first tap arms it, the second
+  clears the score, and it disarms itself after four seconds. It previously sat
+  one stray thumb away from wiping a match, at the same visual weight as *Undo*.
+- **The match clock is shared in online rooms**: `matchStartedAt` /
+  `matchEndedAt` live in the room state, so every phone shows the same duration
+  instead of counting from the moment it happened to join. Offline play keeps
+  its local stopwatch.
+- **Browser chrome and icon follow the chosen sport**: the `theme-color` meta
+  and the favicon switch between clay and turf, applied before the first paint
+  so the status bar never flashes the wrong sport's colour.
+- **Pinch-zoom is no longer blocked**. `maximum-scale=1.0, user-scalable=no`
+  failed WCAG 1.4.4; the reason it is usually set (iOS zooming into sub-16px
+  inputs) is already covered by the 16px input rule.
+- **The sport picker keeps its contrast on hover**. The darkening wash used to
+  lighten from 25% to 10%, dropping the white label from 8.0:1 to 6.2:1 exactly
+  when someone was reading it. The court markings now carry the hover and touch
+  feedback instead.
+
+- **Rematch**: the winner overlay now offers **Rematch** as its primary action.
+  It replays the match with the exact same teams, format, rules and first
+  server, with the score back at 0 — no more retyping the whole setup just to
+  play another round. The second button (*Change setup*) leads to the setup
+  screen for the cases where something actually changed, and a third quiet
+  *Finish* ends the session and returns to the home screen. Tournament fixtures
+  are unaffected: there the primary action stays *Save result*.
+- **Home button** in the match control bar (next to *Undo*, *Reset* and *New*),
+  so a match can be abandoned and the home screen reached in one tap instead of
+  a detour via the setup screen. It is hidden during tournament fixtures, where
+  *Back* already leads to the overview.
+- **Pre-filled setup**: the setup screen remembers the last match of each mode
+  (`padel-score:last-config`, per device) and seeds every field from it — team
+  and player names, format, Golden Point, tiebreak and first server. New
+  `choiceFromSettings()` helper in `src/lib/format.ts` recovers the UI format
+  choice from stored settings, covered by round-trip tests.
+- **Sport selection (Tennis vs. Padel)**: first-time visitors land on a
+  full-bleed **split screen** and pick the sport they want to score. Each half
+  previews its playing surface — a **terracotta clay court** for tennis and the
+  typical **green artificial turf** for padel — with true-to-scale court
+  markings drawn as SVG: the tennis half shows the ITF court (23.77 × 10.97 m,
+  singles sidelines, service lines 6.40 m from the net, centre marks, net posts
+  0.91 m outside the doubles lines), the padel half the FIP court (20 × 10 m,
+  enclosure, service lines 6.95 m from the back wall, centre service line and no
+  singles lines). The court turns a quarter turn on phones so it stays large in
+  the stacked layout. Each half grows on hover/focus. The layout stacks
+  vertically on phones and sits side-by-side from the `md` breakpoint up. The
+  choice is persisted
+  (`padel-score:sport`) and re-applied before the first paint via a small inline
+  script in `index.html`, so returning users never see the wrong palette flash.
+  The back arrow on the home screen returns to the picker.
+- **Sport-specific theming**: the Tailwind `brand`, `night` and `slate` scales
+  now resolve through CSS custom properties (`--brand-600` etc., defined in
+  `src/index.css`) instead of fixed hex values. Toggling the `sport-tennis` /
+  `sport-padel` class on `<html>` re-skins the *entire* app — home, setup,
+  scoreboard, tournament and admin — without touching a single utility class.
+  Light and dark mode keep working on top of both palettes.
+- **Sport-specific play modes**: **Singles is now a tennis-only mode** and was
+  removed from the padel home screen (padel is played 2 vs 2). Tennis offers
+  *Singles*, *Doubles* and *Tournament*; padel offers *Doubles* and
+  *Tournament*. A `'singles'` mode arriving from a shared room falls back to the
+  doubles setup while padel is selected.
+- **Singles mode (1 vs 1)**: a third card on the home screen next to *Doubles*
+  and *Tournament*. The setup screen adapts to a single player name per side and
+  the scoreboard, undo, tournament-free flow and online rooms work exactly as in
+  doubles. Adds the `'singles'` value to the shared `AppMode`, so a room's mode
+  is synced (and shown in the admin panel) like every other mode.
+- **"First to 3" match format** in Singles: a short set-less match where the
+  first player to win **3 points wins** (a "point" is one `0/15/30/40` game), so
+  it lasts at most 5 points. It is the default format for a singles match.
+- **Swap sides**: a *Swap sides* button in the scoring area mirrors the two team
+  panels when the players change ends, so the on-screen left/right always
+  matches the court. It is a pure display preference — scores, serve and history
+  are untouched — and is persisted per device
+  (`padel-score:sides-swapped`). The Apple-Watch layout gained the same control.
+- Unit tests for the format helper (`src/__tests__/format.test.ts`), including
+  an end-to-end *First to 3* match.
 - **Admin panel** (hidden `#admin` route): an operator console that lists every
   active session/room in real time — code, mode, connected devices, live match
   teams & score or tournament size, and last-active time. Each session can be
@@ -37,6 +153,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- **Ending a single match returns to the setup screen** of the same mode instead
+  of all the way to the home screen. Together with the pre-filled fields, tweaking
+  a name or the format before the next match is now a single step; the setup's
+  back arrow still leads home.
+- **Mobile optimisation** across the app:
+  - Viewport height now follows `100dvh`, so the scoreboard no longer jumps when
+    the mobile browser's URL bar hides; safe-area padding uses `border-box` and
+    the app shell scrolls inside it.
+  - Pull-to-refresh / rubber-band scrolling is disabled (`overscroll-behavior`)
+    and inputs are pinned to 16px so iOS stops zooming in on focus.
+  - Tighter paddings, smaller headings and responsive score typography on the
+    match screen, team panels, set history and header, so a full scoreboard fits
+    on a phone without scrolling.
+  - Home-screen mode cards render as compact rows on phones (icon beside the
+    text) and as cards from `sm` upwards; the format picker uses a two-column
+    grid on small screens.
 - **Room-code badge** is now a discreet chip that sits **inline in the page
   flow** instead of a floating overlay, so it no longer moves along when you
   scroll. It appears where it fits naturally: at the bottom of the match/tournament

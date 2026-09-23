@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.6.0",
   "type": "module",
-  "description": "Modern, responsive web app for keeping score during a padel match.",
+  "description": "Modern, responsive web app for keeping score during a tennis or padel match.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

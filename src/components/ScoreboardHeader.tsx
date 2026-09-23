@@ -67,9 +67,9 @@ export function ScoreboardHeader({
   return (
     <header className="flex items-center justify-between gap-2">
       {/* Match duration timer */}
-      <div className="flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-slate-700 shadow-sm ring-1 ring-black/5 dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10">
-        <ClockIcon className="h-5 w-5" />
-        <span className="tabular-nums font-semibold" aria-label="Match duration">
+      <div className="flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-slate-700 shadow-sm ring-1 ring-black/5 dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10 sm:gap-2 sm:px-4 sm:py-2 short:px-2 short:py-0.5">
+        <ClockIcon className="h-5 w-5 short:h-4 short:w-4" />
+        <span className="tabular-nums text-sm font-semibold sm:text-base" aria-label="Match duration">
           {formatDuration(seconds)}
         </span>
       </div>

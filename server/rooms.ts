@@ -56,9 +56,17 @@ export function createRoom(): Room {
   return room;
 }
 
-/** Looks up a room by (case-insensitive) code. */
+/**
+ * Normalises a user-supplied room code: codes are stored upper-case, and a
+ * code pasted from a chat message easily carries surrounding whitespace.
+ */
+function normaliseCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+/** Looks up a room by (case-insensitive, whitespace-tolerant) code. */
 export function getRoom(code: string): Room | undefined {
-  return rooms.get(code.toUpperCase());
+  return rooms.get(normaliseCode(code));
 }
 
 /**
@@ -69,7 +77,7 @@ export function applyAction(
   code: string,
   action: RoomAction,
 ): RoomState | undefined {
-  const room = rooms.get(code.toUpperCase());
+  const room = rooms.get(normaliseCode(code));
   if (!room) return undefined;
   room.state = roomReducer(room.state, action);
   room.updatedAt = Date.now();

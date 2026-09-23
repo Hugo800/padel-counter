@@ -8,7 +8,7 @@
  * and is stored in React state for rendering.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSocket } from '../lib/socket';
 import {
   computeStandings,
@@ -89,14 +89,49 @@ export function useRoom(): UseRoom {
   const [state, setState] = useState<RoomState | null>(null);
   const [message, setMessage] = useState<RoomMessage | null>(null);
 
+  // The room we believe we are in, mirrored into a ref so socket callbacks can
+  // read it without the listeners having to re-subscribe on every change.
+  const codeRef = useRef<string | null>(null);
+  const enterRoom = useCallback((next: string | null) => {
+    codeRef.current = next;
+    setCode(next);
+  }, []);
+
   // Subscribe to broadcast state updates for the whole lifetime of the page.
   useEffect(() => {
     const socket = getSocket();
     const onState = (next: RoomState) => setState(next);
     const onMessage = (msg: RoomMessage) => setMessage(msg);
+
+    // Room membership lives in the *connection* on the server, so a reconnect
+    // (a phone locking, a tunnel dropping, a server restart) hands us a brand
+    // new socket that belongs to no room: every action would then be silently
+    // dropped while the UI still claimed to be online. Re-join instead.
+    const onConnect = () => {
+      const current = codeRef.current;
+      if (!current) return;
+      socket.emit(RoomEvents.join, current, (res: JoinRoomAck) => {
+        if (res.ok && res.state) {
+          setState(res.state);
+          setStatus('online');
+          setError(null);
+          return;
+        }
+        // The room is gone (e.g. the server restarted) – fall back to offline
+        // play rather than leaving a dead scoreboard on screen.
+        codeRef.current = null;
+        setCode(null);
+        setState(null);
+        setStatus('offline');
+        setError(res.error ?? 'The shared room is no longer available.');
+      });
+    };
+
+    socket.on('connect', onConnect);
     socket.on(RoomEvents.state, onState);
     socket.on(RoomEvents.message, onMessage);
     return () => {
+      socket.off('connect', onConnect);
       socket.off(RoomEvents.state, onState);
       socket.off(RoomEvents.message, onMessage);
     };
@@ -108,11 +143,11 @@ export function useRoom(): UseRoom {
     setError(null);
     setStatus('connecting');
     getSocket().emit(RoomEvents.create, (res: CreateRoomAck) => {
-      setCode(res.code);
+      enterRoom(res.code);
       setState(res.state);
       setStatus('online');
     });
-  }, []);
+  }, [enterRoom]);
 
   const joinRoom = useCallback((raw: string) => {
     const clean = raw.trim().toUpperCase();
@@ -124,7 +159,7 @@ export function useRoom(): UseRoom {
     setStatus('connecting');
     getSocket().emit(RoomEvents.join, clean, (res: JoinRoomAck) => {
       if (res.ok && res.state) {
-        setCode(clean);
+        enterRoom(clean);
         setState(res.state);
         setStatus('online');
       } else {
@@ -132,16 +167,16 @@ export function useRoom(): UseRoom {
         setError(res.error ?? 'Could not join the room.');
       }
     });
-  }, []);
+  }, [enterRoom]);
 
   const leaveRoom = useCallback(() => {
     getSocket().emit(RoomEvents.leave);
-    setCode(null);
+    enterRoom(null);
     setState(null);
     setError(null);
     setMessage(null);
     setStatus('offline');
-  }, []);
+  }, [enterRoom]);
 
   /** Sends an action to the server (fire-and-forget; state arrives via broadcast). */
   const dispatch = useCallback((action: RoomAction) => {

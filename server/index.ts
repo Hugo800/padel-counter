@@ -361,6 +361,5 @@ io.on('connection', (socket) => {
 startCleanup();
 
 httpServer.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`Padel Score server listening on http://localhost:${PORT}`);
 });

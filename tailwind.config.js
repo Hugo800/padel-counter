@@ -1,47 +1,51 @@
 /** @type {import('tailwindcss').Config} */
+
+/**
+ * Builds a Tailwind colour scale whose shades read from CSS custom properties,
+ * e.g. `cssVarScale('brand', [500])` → `{ 500: 'rgb(var(--brand-500) / <alpha-value>)' }`.
+ *
+ * @param {string} name   Variable prefix (`brand`, `night`, `slate`).
+ * @param {number[]} shades Shade numbers to generate.
+ */
+function cssVarScale(name, shades) {
+  return Object.fromEntries(
+    shades.map((shade) => [
+      shade,
+      `rgb(var(--${name}-${shade}) / <alpha-value>)`,
+    ]),
+  );
+}
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Vamos Padel Club-inspired palette: a deep padel green (#17593c is
-        // the club's primary colour) on near-black surfaces.
-        brand: {
-          50: '#edf7f1',
-          100: '#d3ecdd',
-          200: '#a9dabf',
-          300: '#74c09b',
-          400: '#43a276',
-          500: '#23855a',
-          600: '#17593c',
-          700: '#124a32',
-          800: '#0e3a28',
-          900: '#0b2c1e',
-        },
-        // Very dark green-tinted neutrals used for the dark "club" surfaces.
-        night: {
-          950: '#050807',
-          900: '#0a120e',
-          800: '#0f1c16',
-          700: '#16281f',
-        },
-        // Override the default (bluish) slate scale with a subtly green-tinted
-        // neutral so every surface, text and border shares the padel-green
-        // monochrome of the Vamos Padel Club design.
-        slate: {
-          50: '#f4f8f6',
-          100: '#e9f1ec',
-          200: '#d4e2da',
-          300: '#b3c9bd',
-          400: '#8aa899',
-          500: '#647d70',
-          600: '#48594f',
-          700: '#2f3d35',
-          800: '#1a271f',
-          900: '#101a14',
-          950: '#070d0a',
-        },
+        // Every palette below resolves through CSS custom properties (defined
+        // in `src/index.css`) instead of fixed hex values. That lets the whole
+        // app re-skin itself per sport: padel keeps the green artificial-turf
+        // look, tennis switches to a terracotta clay-court palette – without a
+        // single utility class changing anywhere in the components.
+        //
+        // The `<alpha-value>` placeholder keeps Tailwind's `/50` opacity
+        // modifiers working, which requires the variables to hold bare
+        // "R G B" channel triplets.
+        brand: cssVarScale('brand', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+        // Very dark, sport-tinted neutrals used for the dark "club" surfaces.
+        // Team B's colour. Team A uses `brand`, so these two must stay far
+        // apart in both sports - see src/lib/teamAccent.ts.
+        teamb: cssVarScale('teamb', [300, 400, 500, 600, 700, 800]),
+        night: cssVarScale('night', [700, 800, 900, 950]),
+        // Overrides the default (bluish) slate scale with a sport-tinted
+        // neutral so every surface, text and border shares the same monochrome.
+        slate: cssVarScale('slate', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
+      },
+      screens: {
+        // Phone held sideways at the net: plenty of width, almost no height.
+        // Declared in `extend` so these utilities are emitted after sm/md/lg
+        // and therefore win wherever both apply.
+        short: { raw: '(max-height: 520px) and (orientation: landscape)' },
       },
       fontFamily: {
         sans: [

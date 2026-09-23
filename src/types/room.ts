@@ -16,8 +16,13 @@ import type {
   TournamentTeam,
 } from './tournament';
 
-/** Top-level navigation mode of a room, shared by everyone in it. */
-export type AppMode = 'home' | 'doubles' | 'tournament';
+/**
+ * Top-level navigation mode of a room, shared by everyone in it.
+ *
+ * `'singles'` and `'doubles'` both render the same single-match flow; they
+ * only differ in the setup screen (1 vs 1 vs. 2 vs 2) and the offered formats.
+ */
+export type AppMode = 'home' | 'singles' | 'doubles' | 'tournament';
 
 /**
  * The complete, serialisable state of one shared room. Mirrors the local
@@ -30,6 +35,14 @@ export interface RoomState {
   match: { present: MatchState | null; history: MatchState[] };
   /** The active tournament, or null when none exists. */
   tournament: TournamentState | null;
+  /**
+   * Epoch ms the live match started, or null when none is running. Kept in the
+   * room rather than on each device so everybody sees the same duration - a
+   * per-device stopwatch drifts apart the moment somebody joins late.
+   */
+  matchStartedAt: number | null;
+  /** Epoch ms the match was decided, so the clock freezes for everyone. */
+  matchEndedAt: number | null;
 }
 
 /**
@@ -39,7 +52,7 @@ export interface RoomState {
 export type RoomAction =
   // Navigation -------------------------------------------------------------
   | { type: 'mode/set'; mode: AppMode }
-  // Single doubles match ---------------------------------------------------
+  // Single match (singles or doubles) ---------------------------------------
   | { type: 'match/start'; config: MatchConfig }
   | { type: 'match/point'; team: TeamId }
   | { type: 'match/undo' }

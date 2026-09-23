@@ -29,7 +29,7 @@ export function SetHistory({ state }: SetHistoryProps) {
   }));
 
   return (
-    <div className="card overflow-x-auto p-4">
+    <div className="card overflow-x-auto p-3 sm:p-4">
       <table className="w-full text-center">
         <thead>
           <tr className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -45,7 +45,7 @@ export function SetHistory({ state }: SetHistoryProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.team} className="text-slate-800 dark:text-slate-100">
-              <td className="max-w-[8rem] truncate py-1 pr-2 text-left font-semibold">
+              <td className="max-w-[6rem] truncate py-1 pr-2 text-left text-sm font-semibold sm:max-w-[8rem] sm:text-base">
                 {row.name}
               </td>
               {row.cells.map((value, i) => {

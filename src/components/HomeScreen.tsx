@@ -1,4 +1,4 @@
-import { TrophyIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+import { TrophyIcon, UserGroupIcon, UserIcon } from '@heroicons/react/24/solid';
 import {
   ArrowRightIcon,
   ArrowRightOnRectangleIcon,
@@ -6,10 +6,16 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
+import { SPORT_LABEL, type Sport } from '../hooks/useSport';
 import type { Theme } from '../hooks/useTheme';
 import { TopBar } from './ui/TopBar';
 
 interface HomeScreenProps {
+  /** The sport picked on the landing screen; drives copy and available modes. */
+  sport: Sport;
+  /** Returns to the sport picker. */
+  onChangeSport: () => void;
+  onSingles: () => void;
   onDoubles: () => void;
   onTournament: () => void;
   /** True when a saved tournament can be resumed. */
@@ -34,12 +40,17 @@ interface HomeScreenProps {
 }
 
 /**
- * The very first screen. Lets the user choose between a normal doubles match
- * (4 players) and tournament mode (many players, random teams + schedule).
+ * The very first screen after a sport was picked. Lets the user choose between
+ * a doubles match (4 players) and tournament mode (many players, random teams
+ * + schedule); tennis additionally offers a singles (1 vs 1) match, which does
+ * not exist in padel.
  * It also hosts the "play together" panel for creating or joining a shared
  * online room so friends can score the same match from their own phones.
  */
 export function HomeScreen({
+  sport,
+  onChangeSport,
+  onSingles,
   onDoubles,
   onTournament,
   hasTournament,
@@ -53,20 +64,36 @@ export function HomeScreen({
   onJoinRoom,
   onLeaveRoom,
 }: HomeScreenProps) {
+  // Padel is played 2 vs 2 only, so the singles card is tennis-exclusive.
+  const hasSingles = sport === 'tennis';
+
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-8 px-4 py-6">
-      <TopBar theme={theme} onToggleTheme={onToggleTheme} />
+    <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-6 px-4 py-5 sm:gap-8 sm:py-6">
+      <TopBar theme={theme} onToggleTheme={onToggleTheme} onBack={onChangeSport} />
 
       <header className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Padel Score
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+          {SPORT_LABEL[sport]} Score
         </h1>
-        <p className="mt-2 text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
           How do you want to play today?
         </p>
       </header>
 
-      <div className="grid flex-1 content-center gap-4 sm:grid-cols-2">
+      <div
+        className={`grid flex-1 content-center gap-3 sm:gap-4 ${
+          hasSingles ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+        }`}
+      >
+        {hasSingles && (
+          <ModeCard
+            icon={<UserIcon className="h-8 w-8" />}
+            title="Singles"
+            description="A 1 vs 1 match — including the short First to 3 format."
+            accent="brand"
+            onClick={onSingles}
+          />
+        )}
         <ModeCard
           icon={<UserGroupIcon className="h-8 w-8" />}
           title="Doubles"
@@ -78,7 +105,7 @@ export function HomeScreen({
           icon={<TrophyIcon className="h-8 w-8" />}
           title="Tournament"
           description="Many players, randomly drawn teams and a full match plan."
-          accent="rose"
+          accent="teamb"
           badge={hasTournament ? 'Resume' : undefined}
           onClick={onTournament}
         />
@@ -124,7 +151,7 @@ function OnlinePanel({
   const [joinCode, setJoinCode] = useState('');
 
   return (
-    <div className="card flex flex-col gap-4 p-6">
+    <div className="card flex flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2">
         <UsersIcon className="h-5 w-5 text-brand-600 dark:text-brand-400" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -211,7 +238,7 @@ interface ModeCardProps {
   icon: React.ReactNode;
   title: string;
   description: string;
-  accent: 'brand' | 'rose';
+  accent: 'brand' | 'teamb';
   badge?: string;
   onClick: () => void;
 }
@@ -234,26 +261,31 @@ function ModeCard({
     <button
       type="button"
       onClick={onClick}
-      className="card group flex flex-col items-start gap-4 p-6 text-left transition-all
+      className="card group flex w-full items-center gap-4 p-4 text-left transition-all
         duration-150 hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.99]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
+        sm:flex-col sm:items-start sm:p-6"
     >
-      <div className="flex w-full items-center justify-between">
-        <span className={`flex h-14 w-14 items-center justify-center rounded-2xl ${iconWrap}`}>
-          {icon}
-        </span>
-        {badge && (
-          <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-            {badge}
-          </span>
-        )}
-      </div>
-      <div>
-        <h2 className="flex items-center gap-1 text-2xl font-bold text-slate-900 dark:text-white">
-          {title}
-          <ArrowRightIcon className="h-5 w-5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
+      {/* On phones the icon sits next to the text (compact list row); from the
+          `sm` breakpoint up it moves onto its own line for the card look. */}
+      <span
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconWrap} sm:h-14 sm:w-14`}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="flex items-center gap-1 text-lg font-bold text-slate-900 dark:text-white sm:text-2xl">
+          <span className="truncate">{title}</span>
+          {badge && (
+            <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              {badge}
+            </span>
+          )}
+          <ArrowRightIcon className="hidden h-5 w-5 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 sm:inline" />
         </h2>
-        <p className="mt-1 text-slate-500 dark:text-slate-400">{description}</p>
+        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 sm:mt-1">
+          {description}
+        </p>
       </div>
     </button>
   );
