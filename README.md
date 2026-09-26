@@ -233,8 +233,9 @@ npm start         # serve dist/ + Socket.IO on PORT (default 3001)
 Deploying on an **OTC Elastic Cloud Server** (or any VM): install Node 18+,
 `npm install`, `npm run build`, then run `npm start` behind your reverse proxy
 (make sure it forwards WebSocket upgrade headers). Set `PORT` to expose a custom
-port. A `GET /healthz` endpoint reports status and the active room count for
-load balancers. In development the client picks the backend URL automatically;
+port. A `GET /healthz` endpoint reports status, the active room count and the
+number of devices connected to a shared room (`roomClients`) for load balancers
+and the deploy script. In development the client picks the backend URL automatically;
 override it with the `VITE_SERVER_URL` env var if needed.
 
 ### 🐳 Deploy with Docker Compose (OTC)
@@ -262,6 +263,19 @@ The app is then reachable on **port 80** of the server. Adjust the port mapping
 in `docker-compose.yml` (e.g. `"8080:3001"`) if needed, and open the matching
 port in the OTC **Security Group**. WebSockets run over the same HTTP port, so
 no extra configuration is required.
+
+### 🚀 Continuous deployment
+
+The live instance (https://hugobarthelmess.de, behind nginx on the OTC server)
+is deployed by `.github/workflows/ci.yml`. Every push and pull request runs
+lint, tests and the build; a green push to `main` connects to the server over
+SSH and runs `~/deploy/padel-counter.sh <commit>`. The script builds the image,
+waits up to 30 minutes until `/healthz` reports `roomClients: 0` (rooms live in
+memory and would be lost), swaps the container and rolls back to the previous
+image if the new one is not healthy within two minutes. The SSH key
+(`DEPLOY_SSH_KEY` secret) may run nothing but that script.
+
+Manual deploy on the server: `~/deploy/padel-counter.sh main`.
 
 ## 🧪 Testing
 

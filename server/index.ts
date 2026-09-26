@@ -144,9 +144,20 @@ async function toDeviceInfo(id: string, meta: DeviceMeta): Promise<DeviceInfo> {
 // client-side app can handle routing/deep links.
 app.use(express.static(DIST_DIR));
 
+/**
+ * Devices currently connected to a shared room. Rooms live in memory only, so
+ * a restart drops them; the deploy script waits for this to reach zero.
+ */
+function roomClientCount(): number {
+  return listRoomSummaries().reduce(
+    (sum, room) => sum + (io.sockets.adapter.rooms.get(room.code)?.size ?? 0),
+    0,
+  );
+}
+
 /** Simple health/status endpoint (handy for load balancers on OTC). */
 app.get('/healthz', (_req, res) => {
-  res.json({ status: 'ok', rooms: roomCount() });
+  res.json({ status: 'ok', rooms: roomCount(), roomClients: roomClientCount() });
 });
 
 app.get('*', (_req, res) => {

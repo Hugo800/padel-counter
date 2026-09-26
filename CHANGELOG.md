@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- **CI/CD pipeline** (`.github/workflows/ci.yml`): every push and pull request
+  runs lint, tests and the build. A green push to `main` deploys to the OTC
+  server over SSH with a key that may only run the deploy script. Because rooms
+  live in memory, the script builds first, then waits up to 30 minutes until no
+  device is connected to a shared room before it swaps the container, and rolls
+  back to the previous image if the new one does not report healthy.
+- **`roomClients` in `/healthz`**: the number of devices currently connected to
+  a shared room, so a deploy can wait for running matches.
 - **Installable and offline-capable (PWA)**: a web app manifest plus a
   hand-written service worker (`public/sw.js`) make the scoreboard installable
   on a phone's home screen and usable without a signal — the common case on a
@@ -36,6 +44,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- **Node 22 in the Docker image** (was Node 20, which stopped receiving
+  security updates in April 2026). The CI runs on Node 22 as well.
+- `.env` files are kept out of the Docker build context.
 - **Team B has its own sport-aware colour** (`teamb`, driven by CSS variables
   like the rest of the palette). Team B previously kept Tailwind's default rose
   in both sports, which sat far too close to tennis' terracotta — the two teams
