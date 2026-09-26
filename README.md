@@ -266,7 +266,7 @@ no extra configuration is required.
 
 ### 🚀 Continuous deployment
 
-The live instance (https://hugobarthelmess.de, behind nginx on the OTC server)
+The live instance (https://counter.hugobarthelmess.de, behind nginx on the OTC server)
 is deployed by `.github/workflows/ci.yml`. Every push and pull request runs
 lint, tests and the build; a green push to `main` connects to the server over
 SSH and runs `~/deploy/padel-counter.sh <commit>`. The script builds the image,

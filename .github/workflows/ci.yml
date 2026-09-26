@@ -1,7 +1,7 @@
 name: CI/CD
 
 # Every push and pull request is linted, tested and built. A green push to main
-# goes live on https://hugobarthelmess.de: the deploy job logs in to the OTC
+# goes live on https://counter.hugobarthelmess.de: the deploy job logs in to the OTC
 # server over SSH. The key there is restricted to ~/deploy/padel-counter.sh,
 # which builds the new image, waits (up to 30 min) until no device is connected
 # to a shared room, swaps the container and rolls back if it is not healthy.
@@ -55,7 +55,7 @@ jobs:
       cancel-in-progress: false
     environment:
       name: production
-      url: https://hugobarthelmess.de
+      url: https://counter.hugobarthelmess.de
     steps:
       - name: Deploy to the OTC server
         env:
@@ -71,5 +71,5 @@ jobs:
 
       - name: Site reachable
         run: |
-          curl -fsS -o /dev/null --retry 5 --retry-delay 3 --retry-all-errors https://hugobarthelmess.de/
-          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://hugobarthelmess.de/healthz
+          curl -fsS -o /dev/null --retry 5 --retry-delay 3 --retry-all-errors https://counter.hugobarthelmess.de/
+          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://counter.hugobarthelmess.de/healthz
