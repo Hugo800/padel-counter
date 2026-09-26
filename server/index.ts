@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { createServer } from 'node:http';
-import { Server } from 'socket.io';
+import { Server, type Socket } from 'socket.io';
 import {
   applyAction,
   createRoom,
@@ -32,7 +32,6 @@ import type {
   AdminDevicesAck,
   AdminListAck,
   AdminMessageAck,
-  AdminMessagePayload,
   CreateRoomAck,
   DeviceInfo,
   JoinRoomAck,
@@ -164,6 +163,61 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
+// --- Socket hardening -----------------------------------------------------
+
+/**
+ * The acknowledgement callback of a socket message, or a no-op. Socket.IO
+ * passes it as the last argument, but only when the client asked for one, and
+ * a client can put anything in that slot. Calling a non-function used to throw
+ * inside the handler and take the whole process – and every room – down.
+ */
+function ackOf<T>(args: unknown[]): (res: T) => void {
+  const last = args[args.length - 1];
+  return typeof last === 'function' ? (last as (res: T) => void) : () => {};
+}
+
+/**
+ * Registers a socket handler that cannot crash the server: a synchronous throw
+ * or a rejected promise caused by a malformed message is logged and dropped.
+ * Without this, one bad message from anyone ends the process (an uncaught
+ * exception, or an unhandled rejection for the async handlers).
+ */
+function on(
+  socket: Socket,
+  event: string,
+  handler: (...args: unknown[]) => unknown,
+): void {
+  socket.on(event, (...args: unknown[]) => {
+    const fail = (err: unknown) =>
+      console.error(
+        `[socket] ${event} failed:`,
+        err instanceof Error ? err.message : err,
+      );
+    try {
+      const result = handler(...args);
+      if (result instanceof Promise) result.catch(fail);
+    } catch (err) {
+      fail(err);
+    }
+  });
+}
+
+/** Cheap shape check before an action reaches the reducer. */
+function isRoomAction(value: unknown): value is RoomAction {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { type?: unknown }).type === 'string'
+  );
+}
+
+/** Reads a field from a payload that may be anything a client sent. */
+function field(payload: unknown, key: string): unknown {
+  return typeof payload === 'object' && payload !== null
+    ? (payload as Record<string, unknown>)[key]
+    : undefined;
+}
+
 // --- Realtime rooms -------------------------------------------------------
 io.on('connection', (socket) => {
   // The room this particular socket currently belongs to (one at a time).
@@ -195,38 +249,37 @@ io.on('connection', (socket) => {
   };
 
   // Create a fresh room and immediately join it.
-  socket.on(RoomEvents.create, (ack?: (res: CreateRoomAck) => void) => {
+  on(socket, RoomEvents.create, (...args) => {
     const room = createRoom();
     join(room.code);
-    ack?.({ code: room.code, state: room.state });
+    ackOf<CreateRoomAck>(args)({ code: room.code, state: room.state });
   });
 
   // Join an existing room by code.
-  socket.on(
-    RoomEvents.join,
-    (code: unknown, ack?: (res: JoinRoomAck) => void) => {
-      if (typeof code !== 'string' || !code.trim()) {
-        ack?.({ ok: false, error: 'Invalid room code.' });
-        return;
-      }
-      const room = getRoom(code);
-      if (!room) {
-        ack?.({ ok: false, error: 'Room not found.' });
-        return;
-      }
-      join(room.code);
-      ack?.({ ok: true, state: room.state });
-    },
-  );
+  on(socket, RoomEvents.join, (...args) => {
+    const [code] = args;
+    const ack = ackOf<JoinRoomAck>(args);
+    if (typeof code !== 'string' || !code.trim()) {
+      ack({ ok: false, error: 'Invalid room code.' });
+      return;
+    }
+    const room = getRoom(code);
+    if (!room) {
+      ack({ ok: false, error: 'Room not found.' });
+      return;
+    }
+    join(room.code);
+    ack({ ok: true, state: room.state });
+  });
 
   // Apply a game action and broadcast the new state to the whole room.
-  socket.on(RoomEvents.action, (action: RoomAction) => {
-    if (!currentCode) return;
+  on(socket, RoomEvents.action, (action) => {
+    if (!currentCode || !isRoomAction(action)) return;
     const state = applyAction(currentCode, action);
     if (state) io.to(currentCode).emit(RoomEvents.state, state);
   });
 
-  socket.on(RoomEvents.leave, () => {
+  on(socket, RoomEvents.leave, () => {
     if (currentCode) socket.leave(currentCode);
     currentCode = null;
     const meta = devices.get(socket.id);
@@ -247,126 +300,114 @@ io.on('connection', (socket) => {
   // --- Admin panel --------------------------------------------------------
   // List every active room. Requires a valid admin token; the connected-client
   // count per room is read from the Socket.IO adapter.
-  socket.on(
-    RoomEvents.adminList,
-    (token: unknown, ack?: (res: AdminListAck) => void) => {
-      if (!isAdmin(token)) {
-        ack?.({
-          ok: false,
-          error: ADMIN_TOKEN
-            ? 'Invalid admin token.'
-            : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
-        });
-        return;
-      }
-      const rooms = listRoomSummaries().map((room) => ({
-        ...room,
-        clients: io.sockets.adapter.rooms.get(room.code)?.size ?? 0,
-      }));
-      ack?.({ ok: true, rooms });
-    },
-  );
+  on(socket, RoomEvents.adminList, (...args) => {
+    const [token] = args;
+    const ack = ackOf<AdminListAck>(args);
+    if (!isAdmin(token)) {
+      ack({
+        ok: false,
+        error: ADMIN_TOKEN
+          ? 'Invalid admin token.'
+          : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
+      });
+      return;
+    }
+    const rooms = listRoomSummaries().map((room) => ({
+      ...room,
+      clients: io.sockets.adapter.rooms.get(room.code)?.size ?? 0,
+    }));
+    ack({ ok: true, rooms });
+  });
 
   // Return the full detail for one room: its state plus every connected device
   // (with a best-effort IP geolocation for the map).
-  socket.on(
-    RoomEvents.adminRoom,
-    async (
-      payload: { code?: unknown; token?: unknown },
-      ack?: (res: RoomDetailAck) => void,
-    ) => {
-      if (!isAdmin(payload?.token)) {
-        ack?.({ ok: false, error: 'Not authorised.' });
-        return;
-      }
-      const room =
-        typeof payload?.code === 'string' ? getRoom(payload.code) : undefined;
-      if (!room) {
-        ack?.({ ok: false, error: 'Room not found.' });
-        return;
-      }
+  on(socket, RoomEvents.adminRoom, async (...args) => {
+    const [payload] = args;
+    const ack = ackOf<RoomDetailAck>(args);
+    if (!isAdmin(field(payload, 'token'))) {
+      ack({ ok: false, error: 'Not authorised.' });
+      return;
+    }
+    const code = field(payload, 'code');
+    const room = typeof code === 'string' ? getRoom(code) : undefined;
+    if (!room) {
+      ack({ ok: false, error: 'Room not found.' });
+      return;
+    }
 
-      // Collect the sockets currently in the room and resolve their devices.
-      const socketIds = [
-        ...(io.sockets.adapter.rooms.get(room.code) ?? []),
-      ];
-      const deviceList = await Promise.all(
-        socketIds.map(async (id): Promise<DeviceInfo | null> => {
-          const meta = devices.get(id);
-          if (!meta) return null;
-          return toDeviceInfo(id, meta);
-        }),
-      );
+    // Collect the sockets currently in the room and resolve their devices.
+    const socketIds = [...(io.sockets.adapter.rooms.get(room.code) ?? [])];
+    const deviceList = await Promise.all(
+      socketIds.map(async (id): Promise<DeviceInfo | null> => {
+        const meta = devices.get(id);
+        if (!meta) return null;
+        return toDeviceInfo(id, meta);
+      }),
+    );
 
-      ack?.({
-        ok: true,
-        state: room.state,
-        devices: deviceList.filter((d): d is DeviceInfo => d !== null),
-      });
-    },
-  );
+    ack({
+      ok: true,
+      state: room.state,
+      devices: deviceList.filter((d): d is DeviceInfo => d !== null),
+    });
+  });
 
   // Return the full device log: every device that has connected to the site
   // (online and recently disconnected), including those never in a room. This
   // powers the admin panel's global device log + map.
-  socket.on(
-    RoomEvents.adminDevices,
-    async (token: unknown, ack?: (res: AdminDevicesAck) => void) => {
-      if (!isAdmin(token)) {
-        ack?.({
-          ok: false,
-          error: ADMIN_TOKEN
-            ? 'Invalid admin token.'
-            : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
-        });
-        return;
-      }
-      pruneDeviceLog();
-      const list = await Promise.all(
-        [...devices.entries()].map(([id, meta]) => toDeviceInfo(id, meta)),
-      );
-      // Most recent activity first (online devices, then latest disconnects).
-      list.sort((a, b) => {
-        const at = a.online ? Date.now() : a.disconnectedAt ?? 0;
-        const bt = b.online ? Date.now() : b.disconnectedAt ?? 0;
-        if (at !== bt) return bt - at;
-        return b.connectedAt - a.connectedAt;
+  on(socket, RoomEvents.adminDevices, async (...args) => {
+    const [token] = args;
+    const ack = ackOf<AdminDevicesAck>(args);
+    if (!isAdmin(token)) {
+      ack({
+        ok: false,
+        error: ADMIN_TOKEN
+          ? 'Invalid admin token.'
+          : 'Admin panel is disabled (set ADMIN_TOKEN on the server).',
       });
-      ack?.({ ok: true, devices: list });
-    },
-  );
+      return;
+    }
+    pruneDeviceLog();
+    const list = await Promise.all(
+      [...devices.entries()].map(([id, meta]) => toDeviceInfo(id, meta)),
+    );
+    // Most recent activity first (online devices, then latest disconnects).
+    list.sort((a, b) => {
+      const at = a.online ? Date.now() : a.disconnectedAt ?? 0;
+      const bt = b.online ? Date.now() : b.disconnectedAt ?? 0;
+      if (at !== bt) return bt - at;
+      return b.connectedAt - a.connectedAt;
+    });
+    ack({ ok: true, devices: list });
+  });
 
   // Broadcast a popup message to everyone in a specific room.
-  socket.on(
-    RoomEvents.adminMessage,
-    (
-      payload: AdminMessagePayload,
-      ack?: (res: AdminMessageAck) => void,
-    ) => {
-      if (!isAdmin(payload?.token)) {
-        ack?.({ ok: false, error: 'Not authorised.' });
-        return;
-      }
-      const text =
-        typeof payload?.text === 'string' ? payload.text.trim() : '';
-      if (!text) {
-        ack?.({ ok: false, error: 'Message must not be empty.' });
-        return;
-      }
-      if (text.length > MAX_MESSAGE_LENGTH) {
-        ack?.({ ok: false, error: 'Message is too long.' });
-        return;
-      }
-      const room =
-        typeof payload?.code === 'string' ? getRoom(payload.code) : undefined;
-      if (!room) {
-        ack?.({ ok: false, error: 'Room not found.' });
-        return;
-      }
-      io.to(room.code).emit(RoomEvents.message, { text, at: Date.now() });
-      ack?.({ ok: true });
-    },
-  );
+  on(socket, RoomEvents.adminMessage, (...args) => {
+    const [payload] = args;
+    const ack = ackOf<AdminMessageAck>(args);
+    if (!isAdmin(field(payload, 'token'))) {
+      ack({ ok: false, error: 'Not authorised.' });
+      return;
+    }
+    const rawText = field(payload, 'text');
+    const text = typeof rawText === 'string' ? rawText.trim() : '';
+    if (!text) {
+      ack({ ok: false, error: 'Message must not be empty.' });
+      return;
+    }
+    if (text.length > MAX_MESSAGE_LENGTH) {
+      ack({ ok: false, error: 'Message is too long.' });
+      return;
+    }
+    const code = field(payload, 'code');
+    const room = typeof code === 'string' ? getRoom(code) : undefined;
+    if (!room) {
+      ack({ ok: false, error: 'Room not found.' });
+      return;
+    }
+    io.to(room.code).emit(RoomEvents.message, { text, at: Date.now() });
+    ack({ ok: true });
+  });
 });
 
 startCleanup();
@@ -374,3 +415,6 @@ startCleanup();
 httpServer.listen(PORT, () => {
   console.log(`Padel Score server listening on http://localhost:${PORT}`);
 });
+
+/** Exported for the socket hardening test (server/__tests__). */
+export { httpServer, io };

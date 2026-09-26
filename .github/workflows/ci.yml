@@ -34,6 +34,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # tsc -b only covers src/; the server runs through tsx without a type check.
+      - name: Typecheck server
+        run: npx tsc -p server/tsconfig.json
+
       - name: Test
         run: npm test
 

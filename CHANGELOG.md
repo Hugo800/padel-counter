@@ -190,6 +190,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   "Leave room"), so an accidental tap can no longer kick you out of the shared
   room.
 
+### Fixed
+
+- **One malformed Socket.IO message could crash the server** and wipe every
+  shared room. Handlers called `ack?.()`, which throws for a non-function ack,
+  and the reducer read `action.type` on whatever arrived (`null`, or
+  `match/start` without a config). Any client could trigger this. Every handler
+  is now registered through a wrapper that logs and drops errors (sync and
+  async), acks are only called when they are functions, payload fields are read
+  defensively and actions need an object with a string `type`. Covered by
+  `server/__tests__/socketHardening.test.ts`, and CI now type-checks the server.
+
 ## [1.6.0]
 
 ### Added
