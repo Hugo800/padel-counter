@@ -192,6 +192,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **No public fallback admin token.** `docker-compose.yml` fell back to a
+  token written in this public repository whenever `ADMIN_TOKEN` was unset,
+  which would have opened the admin panel (visitor IPs, locations, broadcast
+  messages) to anyone. Without `ADMIN_TOKEN` the admin panel is now disabled,
+  as the comment above the setting always said.
 - **One malformed Socket.IO message could crash the server** and wipe every
   shared room. Handlers called `ack?.()`, which throws for a non-function ack,
   and the reducer read `action.type` on whatever arrived (`null`, or
