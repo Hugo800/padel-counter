@@ -59,6 +59,13 @@ export function SportSelect({ onSelect }: SportSelectProps) {
         }
         onClick={() => onSelect('padel')}
       />
+
+      {/* Safari 26+ ignores theme-color and tints its status bar and toolbar from
+          fixed elements at the screen edges instead; without these the stacked
+          halves end at black bars. Only background-color counts, so the colours
+          are the measured edge tones of the clay and turf halves. */}
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 -top-2 z-20 h-3 bg-[#834935] md:hidden" />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 -bottom-2 z-20 h-3 bg-[#0f3222] md:hidden" />
     </div>
   );
 }
